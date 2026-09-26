@@ -7,6 +7,7 @@ import 'features/home/presentation/bloc/home_bloc.dart';
 import 'features/home/presentation/bloc/home_event.dart';
 import 'features/auth/presentation/pages/login_screen.dart';
 import 'features/home/presentation/pages/main_navigation_screen.dart';
+import 'features/webview/presentation/pages/webview_app_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -37,7 +38,7 @@ class MyApp extends StatelessWidget {
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.blueAccent),
           useMaterial3: true,
         ),
-        home: const MainNavigationScreen(),
+        home: const WebviewAppScreen(),
       ),
     );
   }
