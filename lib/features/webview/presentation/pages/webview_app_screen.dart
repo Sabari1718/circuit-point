@@ -1440,13 +1440,16 @@ class _WebviewAppScreenState extends State<WebviewAppScreen> {
         }
       }
 
-      // Clear previously auto-injected hardcoded test account so all users start clean as Guest
+      // One-time cleanup for old hardcoded dummy session from previous builds (never touches real user logins)
       try {
-        var existingUser = localStorage.getItem('user');
-        if (existingUser && existingUser.indexOf('sabarishwaran1718@gmail.com') !== -1) {
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-          window.dispatchEvent(new Event('user-profile-updated'));
+        if (!localStorage.getItem('__cp_dummy_purged_v3')) {
+          localStorage.setItem('__cp_dummy_purged_v3', '1');
+          var t = localStorage.getItem('token');
+          if (t && t.indexOf('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MTgzLCJlbWFpbCI6InNhYmFyaXNod2FyYW4xNzE4QGdtYWlsLmNvbSIsInBob25lX251bWJlciI6IjgwMTIxMDc2MjYiLCJ1c2VyX21haW5faWQi') === 0) {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            window.dispatchEvent(new Event('user-profile-updated'));
+          }
         }
       } catch (e) {}
 
