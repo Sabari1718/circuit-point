@@ -97,62 +97,72 @@ class _WebviewAppScreenState extends State<WebviewAppScreen> {
   }
 
   void _initWebView() {
+    final navigationDelegate = NavigationDelegate(
+      onProgress: (int progress) {
+        setState(() {
+          _loadingProgress = progress / 100.0;
+        });
+        if (progress > 50) {
+          _injectMobileFixes();
+        }
+      },
+      onPageStarted: (String url) {
+        setState(() {
+          _hasError = false;
+          _updateBottomNavIndex(url);
+        });
+        _controller.runJavaScript('window.scrollTo(0, 0);');
+      },
+      onPageFinished: (String url) {
+        _injectMobileFixes();
+      },
+      onWebResourceError: (WebResourceError error) {
+        // Only trigger full connection failure if the main HTML frame itself fails
+        if (error.isForMainFrame == true) {
+          debugPrint('WebView Main Frame Error: ${error.description} (code: ${error.errorCode})');
+          setState(() {
+            _hasError = true;
+          });
+        }
+        // Subresource errors are safely ignored here
+      },
+      onNavigationRequest: (NavigationRequest request) async {
+        final uri = Uri.parse(request.url);
+
+        // Handle UPI, WhatsApp, Tel, Mailto, and custom payment schemes (like Flipkart)
+        if (uri.scheme != 'http' && uri.scheme != 'https') {
+          try {
+            final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+            if (!launched) {
+              await launchUrl(uri, mode: LaunchMode.externalNonBrowserApplication);
+            }
+          } catch (e) {
+            debugPrint('Could not launch external URL: ${request.url}, error: $e');
+          }
+          return NavigationDecision.prevent;
+        }
+
+        return NavigationDecision.navigate;
+      },
+    );
+
+    if (navigationDelegate.platform is AndroidNavigationDelegate) {
+      final androidNav = navigationDelegate.platform as AndroidNavigationDelegate;
+      androidNav.setOnSSlAuthError((error) {
+        if (error is AndroidSslAuthError) {
+          error.proceed();
+        }
+      });
+    }
+
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(Colors.white)
-      ..setNavigationDelegate(
-        NavigationDelegate(
-          onProgress: (int progress) {
-            setState(() {
-              _loadingProgress = progress / 100.0;
-            });
-            if (progress > 50) {
-              _injectMobileFixes();
-            }
-          },
-          onPageStarted: (String url) {
-            setState(() {
-              _hasError = false;
-              _updateBottomNavIndex(url);
-            });
-            _controller.runJavaScript('window.scrollTo(0, 0);');
-          },
-          onPageFinished: (String url) {
-            _injectMobileFixes();
-          },
-          onWebResourceError: (WebResourceError error) {
-            // Only trigger full connection failure if the main HTML frame itself fails
-            if (error.isForMainFrame == true) {
-              debugPrint('WebView Main Frame Error: ${error.description} (code: ${error.errorCode})');
-              setState(() {
-                _hasError = true;
-              });
-            }
-            // Subresource errors (such as broken image URLs from unreachable domain) are safely ignored here
-          },
-          onNavigationRequest: (NavigationRequest request) async {
-            final uri = Uri.parse(request.url);
-
-            // Handle UPI, WhatsApp, Tel, Mailto, and custom payment schemes (like Flipkart)
-            if (uri.scheme != 'http' && uri.scheme != 'https') {
-              try {
-                final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
-                if (!launched) {
-                  await launchUrl(uri, mode: LaunchMode.externalNonBrowserApplication);
-                }
-              } catch (e) {
-                debugPrint('Could not launch external URL: ${request.url}, error: $e');
-              }
-              return NavigationDecision.prevent;
-            }
-
-            return NavigationDecision.navigate;
-          },
-        ),
-      );
+      ..setNavigationDelegate(navigationDelegate);
 
     if (_controller.platform is AndroidWebViewController) {
       final androidController = _controller.platform as AndroidWebViewController;
+      androidController.setMixedContentMode(MixedContentMode.alwaysAllow);
       androidController.setOnShowFileSelector((FileSelectorParams params) async {
         try {
           FileType fileType = FileType.any;
@@ -1483,46 +1493,12 @@ class _WebviewAppScreenState extends State<WebviewAppScreen> {
         };
       }
 
-      // Auto-reroute all dead srivagroups.in images to live rtest.epriceoffer.com
-      function fixDeadDomainImages() {
-        var imgs = document.getElementsByTagName('img');
-        for (var i = 0; i < imgs.length; i++) {
-          var s = imgs[i].src;
-          if (s && s.indexOf('srivagroups.in') !== -1) {
-            imgs[i].src = s.replace('srivagroups.in', 'rtest.epriceoffer.com');
-          }
-        }
-      }
-
       if (!window.__cpImgFixInjected) {
         window.__cpImgFixInjected = true;
-
-        try {
-          var originalSrcDescriptor = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'src');
-          if (originalSrcDescriptor && originalSrcDescriptor.set) {
-            var originalSet = originalSrcDescriptor.set;
-            Object.defineProperty(HTMLImageElement.prototype, 'src', {
-              set: function(val) {
-                if (typeof val === 'string' && val.indexOf('srivagroups.in') !== -1) {
-                  val = val.replace('srivagroups.in', 'rtest.epriceoffer.com');
-                }
-                return originalSet.call(this, val);
-              },
-              get: originalSrcDescriptor.get,
-              configurable: true,
-              enumerable: true
-            });
-          }
-        } catch(e) {}
-
-        fixDeadDomainImages();
-
         window.addEventListener('error', function(e) {
           if (e.target && e.target.tagName === 'IMG') {
             var img = e.target;
-            if (img.src && img.src.indexOf('srivagroups.in') !== -1) {
-              img.src = img.src.replace('srivagroups.in', 'rtest.epriceoffer.com');
-            } else if (!img.dataset.fallbackDone) {
+            if (!img.dataset.fallbackDone) {
               img.dataset.fallbackDone = 'true';
               img.src = '/assets/images/electronics/product/1.jpg';
             }
@@ -1591,14 +1567,12 @@ class _WebviewAppScreenState extends State<WebviewAppScreen> {
       setupMobileFilter();
       setupProfilePage();
       setupAppHeader();
-      fixDeadDomainImages();
       if (!window.__circuitPointInterval) {
         window.__circuitPointInterval = setInterval(function() {
           setupUserModal();
           setupMobileFilter();
           setupProfilePage();
           setupAppHeader();
-          fixDeadDomainImages();
         }, 500);
       }
     })();
