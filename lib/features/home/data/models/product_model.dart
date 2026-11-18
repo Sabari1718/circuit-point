@@ -20,11 +20,15 @@ class ProductModel {
   });
 
   factory ProductModel.fromJson(Map<String, dynamic> json) {
+    String rawImg = json['image_url'] ?? '';
+    if (rawImg.contains('srivagroups.in')) {
+      rawImg = rawImg.replaceAll('srivagroups.in', 'rtest.epriceoffer.com');
+    }
     return ProductModel(
       id: json['id']?.toString() ?? '',
       name: json['product_name'] ?? json['name'] ?? '',
       description: json['description'] ?? '',
-      imageUrl: json['image_url'] ?? '',
+      imageUrl: rawImg,
       brand: json['brands'] ?? 'IMPORTED',
       category: json['categories'] ?? '',
       offerPrice: double.tryParse(json['selling_price']?.toString() ?? json['price']?.toString() ?? '0') ?? 0.0,

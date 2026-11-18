@@ -100,7 +100,6 @@ class _WebviewAppScreenState extends State<WebviewAppScreen> {
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(Colors.white)
-      ..setUserAgent('CircuitPointApp/1.0 (Android; Mobile)')
       ..setNavigationDelegate(
         NavigationDelegate(
           onProgress: (int progress) {
@@ -1484,13 +1483,46 @@ class _WebviewAppScreenState extends State<WebviewAppScreen> {
         };
       }
 
-      // Safe capture for broken dead-domain images (non-destructive)
+      // Auto-reroute all dead srivagroups.in images to live rtest.epriceoffer.com
+      function fixDeadDomainImages() {
+        var imgs = document.getElementsByTagName('img');
+        for (var i = 0; i < imgs.length; i++) {
+          var s = imgs[i].src;
+          if (s && s.indexOf('srivagroups.in') !== -1) {
+            imgs[i].src = s.replace('srivagroups.in', 'rtest.epriceoffer.com');
+          }
+        }
+      }
+
       if (!window.__cpImgFixInjected) {
         window.__cpImgFixInjected = true;
+
+        try {
+          var originalSrcDescriptor = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'src');
+          if (originalSrcDescriptor && originalSrcDescriptor.set) {
+            var originalSet = originalSrcDescriptor.set;
+            Object.defineProperty(HTMLImageElement.prototype, 'src', {
+              set: function(val) {
+                if (typeof val === 'string' && val.indexOf('srivagroups.in') !== -1) {
+                  val = val.replace('srivagroups.in', 'rtest.epriceoffer.com');
+                }
+                return originalSet.call(this, val);
+              },
+              get: originalSrcDescriptor.get,
+              configurable: true,
+              enumerable: true
+            });
+          }
+        } catch(e) {}
+
+        fixDeadDomainImages();
+
         window.addEventListener('error', function(e) {
           if (e.target && e.target.tagName === 'IMG') {
             var img = e.target;
-            if (!img.dataset.fallbackDone) {
+            if (img.src && img.src.indexOf('srivagroups.in') !== -1) {
+              img.src = img.src.replace('srivagroups.in', 'rtest.epriceoffer.com');
+            } else if (!img.dataset.fallbackDone) {
               img.dataset.fallbackDone = 'true';
               img.src = '/assets/images/electronics/product/1.jpg';
             }
@@ -1559,12 +1591,14 @@ class _WebviewAppScreenState extends State<WebviewAppScreen> {
       setupMobileFilter();
       setupProfilePage();
       setupAppHeader();
+      fixDeadDomainImages();
       if (!window.__circuitPointInterval) {
         window.__circuitPointInterval = setInterval(function() {
           setupUserModal();
           setupMobileFilter();
           setupProfilePage();
           setupAppHeader();
+          fixDeadDomainImages();
         }, 500);
       }
     })();
