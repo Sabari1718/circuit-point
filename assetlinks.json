@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.circuitpoint.circuit_point",
+      "sha256_cert_fingerprints": [
+        "A8:D1:EC:4F:C8:92:6E:1E:DE:5D:FA:B8:A4:66:20:8E:C4:6C:55:26:05:7B:A4:AB:DE:B1:CD:1F:39:D2:21:A2"
+      ]
+    }
+  }
+]
