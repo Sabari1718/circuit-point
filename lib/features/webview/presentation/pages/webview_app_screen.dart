@@ -1440,20 +1440,12 @@ class _WebviewAppScreenState extends State<WebviewAppScreen> {
         }
       }
 
-      // Auto-restore Sabarii Verified VIP session if logged out (bypasses broken upstream auth)
+      // Clear previously auto-injected hardcoded test account so all users start clean as Guest
       try {
-        if (!localStorage.getItem('token')) {
-          localStorage.setItem('token', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MTgzLCJlbWFpbCI6InNhYmFyaXNod2FyYW4xNzE4QGdtYWlsLmNvbSIsInBob25lX251bWJlciI6IjgwMTIxMDc2MjYiLCJ1c2VyX21haW5faWQiOiI0MjgyMjg0NDIyIiwidmlydHVhbF9pZCI6IjQxODM2NTQ2NjcxMDQxIiwidXNlcl9uYW1lIjoic2FiYXJpaSIsInVzZXJfdHlwZSI6InZlcmlmaWVkIiwiaWF0IjoxNzkwNjY5MzE4LCJleHAiOjE3OTA3NTU3MTh9.YGEXbvzwjrHDvLX1QKWLFy5oQbjOxasIgHHte4C7wVY');
-          localStorage.setItem('user', JSON.stringify({
-            id: 183,
-            email: 'sabarishwaran1718@gmail.com',
-            phone_number: '8012107626',
-            user_main_id: '4282284422',
-            virtual_id: '41836546671041',
-            user_name: 'sabarii',
-            name: 'sabarii',
-            user_type: 'verified'
-          }));
+        var existingUser = localStorage.getItem('user');
+        if (existingUser && existingUser.indexOf('sabarishwaran1718@gmail.com') !== -1) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
           window.dispatchEvent(new Event('user-profile-updated'));
         }
       } catch (e) {}
@@ -1634,49 +1626,49 @@ class _WebviewAppScreenState extends State<WebviewAppScreen> {
     super.dispose();
   }
 
-  Future<Map<String, String>> _fetchUserData() async {
+  Future<Map<String, String>?> _fetchUserData() async {
     try {
       final res = await _controller.runJavaScriptReturningResult('''
         (function() {
           try {
+            var token = localStorage.getItem("token");
             var raw = localStorage.getItem("user");
-            if (raw) {
+            if (token && raw) {
               var u = JSON.parse(raw);
               return JSON.stringify({
-                id: u.virtual_id || u.virtualId || u.vid || u.user_main_id || u.id || u.userId || "41836546671041",
-                email: u.email || "sabarishwaran1718@gmail.com",
-                name: u.name || u.full_name || "41836546671041"
+                id: (u.virtual_id || u.virtualId || u.vid || u.user_main_id || u.id || u.userId || "").toString(),
+                email: (u.email || "").toString(),
+                name: (u.name || u.full_name || u.user_name || "User").toString()
               });
             }
           } catch(e) {}
-          return JSON.stringify({
-            id: "41836546671041",
-            email: "sabarishwaran1718@gmail.com",
-            name: "41836546671041"
-          });
+          return "";
         })()
       ''');
       String clean = res.toString();
       if (clean.startsWith('"') && clean.endsWith('"')) {
         clean = clean.substring(1, clean.length - 1).replaceAll(r'\"', '"');
       }
-      final Map<String, dynamic> data = jsonDecode(clean);
-      return {
-        'id': data['id']?.toString() ?? '41836546671041',
-        'email': data['email']?.toString() ?? 'sabarishwaran1718@gmail.com',
-        'name': data['name']?.toString() ?? '41836546671041',
-      };
+      if (clean.isNotEmpty && clean != '""' && clean != 'null') {
+        final Map<String, dynamic> data = jsonDecode(clean);
+        final email = data['email']?.toString() ?? '';
+        final name = data['name']?.toString() ?? '';
+        if (email.isNotEmpty || name.isNotEmpty) {
+          return {
+            'id': data['id']?.toString() ?? '',
+            'email': email,
+            'name': name.isNotEmpty ? name : 'User',
+          };
+        }
+      }
     } catch (_) {}
-    return {
-      'id': '41836546671041',
-      'email': 'sabarishwaran1718@gmail.com',
-      'name': '41836546671041',
-    };
+    return null;
   }
 
   void _showAccountBottomSheet() async {
     final user = await _fetchUserData();
     if (!mounted) return;
+    final bool isLoggedIn = user != null;
 
     showModalBottomSheet(
       context: context,
@@ -1704,122 +1696,198 @@ class _WebviewAppScreenState extends State<WebviewAppScreen> {
                 ),
               ),
 
-              // Gethu VIP Member Card Header
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF1E293B), Color(0xFF0F172A)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+              // Member Card (Logged In) OR Guest Welcome Card (Guest)
+              if (isLoggedIn)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF1E293B), Color(0xFF0F172A)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(22),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF0F172A).withValues(alpha: 0.25),
+                        blurRadius: 16,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
                   ),
-                  borderRadius: BorderRadius.circular(22),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF0F172A).withValues(alpha: 0.25),
-                      blurRadius: 16,
-                      offset: const Offset(0, 6),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    // Avatar with Gradient & Star Badge
-                    Stack(
-                      children: [
-                        Container(
-                          width: 52,
-                          height: 52,
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFFE53935), Color(0xFFB71C1C)],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 2),
-                          ),
-                          child: const Icon(Icons.person_rounded, color: Colors.white, size: 28),
-                        ),
-                        Positioned(
-                          right: 0,
-                          bottom: 0,
-                          child: Container(
-                            padding: const EdgeInsets.all(3),
-                            decoration: const BoxDecoration(
-                              color: Color(0xFFFFB300),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(Icons.star_rounded, color: Colors.black, size: 10),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(width: 14),
-                    // Details
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                  child: Row(
+                    children: [
+                      // Avatar with Gradient & Star Badge
+                      Stack(
                         children: [
-                          Row(
-                            children: [
-                              Flexible(
-                                child: Text(
-                                  user['name']!,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w800,
-                                    fontSize: 15.5,
-                                    letterSpacing: -0.2,
-                                  ),
-                                ),
+                          Container(
+                            width: 52,
+                            height: 52,
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFFE53935), Color(0xFFB71C1C)],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
                               ),
-                              const SizedBox(width: 6),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  gradient: const LinearGradient(
-                                    colors: [Color(0xFFFFD54F), Color(0xFFFFB300)],
-                                  ),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: const Text(
-                                  'VIP',
-                                  style: TextStyle(
-                                    color: Colors.black87,
-                                    fontWeight: FontWeight.w900,
-                                    fontSize: 9.5,
-                                  ),
-                                ),
-                              ),
-                            ],
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 2),
+                            ),
+                            child: const Icon(Icons.person_rounded, color: Colors.white, size: 28),
                           ),
-                          const SizedBox(height: 3),
-                          Text(
-                            user['email']!,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: Colors.grey.shade400,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
+                          Positioned(
+                            right: 0,
+                            bottom: 0,
+                            child: Container(
+                              padding: const EdgeInsets.all(3),
+                              decoration: const BoxDecoration(
+                                color: Color(0xFFFFB300),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.star_rounded, color: Colors.black, size: 10),
                             ),
                           ),
                         ],
                       ),
+                      const SizedBox(width: 14),
+                      // Details
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    user['name'] ?? 'User',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 15.5,
+                                      letterSpacing: -0.2,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    gradient: const LinearGradient(
+                                      colors: [Color(0xFFFFD54F), Color(0xFFFFB300)],
+                                    ),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Text(
+                                    'VIP',
+                                    style: TextStyle(
+                                      color: Colors.black87,
+                                      fontWeight: FontWeight.w900,
+                                      fontSize: 9.5,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              user['email'] ?? '',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: Colors.grey.shade400,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close_rounded, color: Colors.white70, size: 22),
+                        onPressed: () => Navigator.pop(ctx),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
+                    ],
+                  ),
+                )
+              else
+                // Guest Header Card
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF1E293B), Color(0xFF0F172A)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.close_rounded, color: Colors.white70, size: 22),
-                      onPressed: () => Navigator.pop(ctx),
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                    ),
-                  ],
+                    borderRadius: BorderRadius.circular(22),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF0F172A).withValues(alpha: 0.25),
+                        blurRadius: 16,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 50,
+                        height: 50,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.1),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white.withValues(alpha: 0.2), width: 1.5),
+                        ),
+                        child: const Icon(Icons.person_outline_rounded, color: Colors.white70, size: 26),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Welcome, Guest!',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 15.5,
+                                letterSpacing: -0.2,
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              'Sign in to manage orders & fast checkout',
+                              style: TextStyle(
+                                color: Colors.grey.shade400,
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      ElevatedButton(
+                        onPressed: () {
+                          Navigator.pop(ctx);
+                          _controller.loadRequest(Uri.parse('$_baseUrl/login'));
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFE53935),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          elevation: 0,
+                        ),
+                        child: const Text('Login', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
 
               const SizedBox(height: 16),
 
@@ -1861,21 +1929,16 @@ class _WebviewAppScreenState extends State<WebviewAppScreen> {
               const SizedBox(height: 14),
 
               // Menu Items List
-              _buildAccountMenuItem(
-                icon: Icons.person_outline_rounded,
-                title: 'My Profile',
-                subtitle: 'Personal details, email & phone',
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _controller.loadRequest(Uri.parse('$_baseUrl/profile'));
-                  Future.delayed(const Duration(milliseconds: 300), () {
-                    if (mounted) _injectMobileFixes();
-                  });
-                  Future.delayed(const Duration(milliseconds: 800), () {
-                    if (mounted) _injectMobileFixes();
-                  });
-                },
-              ),
+              if (isLoggedIn)
+                _buildAccountMenuItem(
+                  icon: Icons.person_outline_rounded,
+                  title: 'My Profile',
+                  subtitle: 'Personal details, email & phone',
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _controller.loadRequest(Uri.parse('$_baseUrl/profile'));
+                  },
+                ),
               _buildAccountMenuItem(
                 icon: Icons.storefront_outlined,
                 title: 'Shop Products',
@@ -1894,55 +1957,68 @@ class _WebviewAppScreenState extends State<WebviewAppScreen> {
                   _controller.loadRequest(Uri.parse('$_baseUrl/categories'));
                 },
               ),
-              _buildAccountMenuItem(
-                icon: Icons.location_on_outlined,
-                title: 'Delivery Addresses',
-                subtitle: 'Add or manage shipping locations',
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _controller.runJavaScript('window.dispatchEvent(new CustomEvent("open-address-modal"));');
-                },
-              ),
+              if (isLoggedIn)
+                _buildAccountMenuItem(
+                  icon: Icons.location_on_outlined,
+                  title: 'Delivery Addresses',
+                  subtitle: 'Add or manage shipping locations',
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _controller.runJavaScript('window.dispatchEvent(new CustomEvent("open-address-modal"));');
+                  },
+                )
+              else
+                _buildAccountMenuItem(
+                  icon: Icons.login_rounded,
+                  title: 'Sign In / Register',
+                  subtitle: 'Login with your account or create a new one',
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _controller.loadRequest(Uri.parse('$_baseUrl/login'));
+                  },
+                ),
 
-              const Divider(height: 20, thickness: 1, color: Color(0xFFF1F5F9)),
+              if (isLoggedIn) ...[
+                const Divider(height: 20, thickness: 1, color: Color(0xFFF1F5F9)),
 
-              // Logout Button
-              InkWell(
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _controller.runJavaScript('''
-                    localStorage.removeItem("token");
-                    localStorage.removeItem("user");
-                    window.dispatchEvent(new Event("user-profile-updated"));
-                    window.location.reload();
-                  ''');
-                },
-                borderRadius: BorderRadius.circular(14),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFEF2F2),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: const Color(0xFFFEE2E2)),
-                  ),
-                  child: const Row(
-                    children: [
-                      Icon(Icons.logout_rounded, color: Color(0xFFDC2626), size: 20),
-                      SizedBox(width: 12),
-                      Text(
-                        'Log Out',
-                        style: TextStyle(
-                          color: Color(0xFFDC2626),
-                          fontWeight: FontWeight.w700,
-                          fontSize: 14,
+                // Logout Button
+                InkWell(
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _controller.runJavaScript('''
+                      localStorage.removeItem("token");
+                      localStorage.removeItem("user");
+                      window.dispatchEvent(new Event("user-profile-updated"));
+                      window.location.reload();
+                    ''');
+                  },
+                  borderRadius: BorderRadius.circular(14),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFEF2F2),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: const Color(0xFFFEE2E2)),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.logout_rounded, color: Color(0xFFDC2626), size: 20),
+                        SizedBox(width: 12),
+                        Text(
+                          'Log Out',
+                          style: TextStyle(
+                            color: Color(0xFFDC2626),
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
+                          ),
                         ),
-                      ),
-                      Spacer(),
-                      Icon(Icons.chevron_right_rounded, color: Color(0xFFF87171), size: 20),
-                    ],
+                        Spacer(),
+                        Icon(Icons.chevron_right_rounded, color: Color(0xFFF87171), size: 20),
+                      ],
+                    ),
                   ),
                 ),
-              ),
+              ],
             ],
           ),
         );
