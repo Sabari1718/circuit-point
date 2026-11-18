@@ -1450,46 +1450,18 @@ class _WebviewAppScreenState extends State<WebviewAppScreen> {
         }
       } catch (e) {}
 
-      // Intercept Captcha category API so Captcha ALWAYS loads in Login
-      if (!window.__cpCaptchaIntercepted) {
-        window.__cpCaptchaIntercepted = true;
-        var origOpen = XMLHttpRequest.prototype.open;
-        var origSend = XMLHttpRequest.prototype.send;
-        XMLHttpRequest.prototype.open = function(method, url) {
-          this._reqUrl = url;
-          return origOpen.apply(this, arguments);
-        };
-        XMLHttpRequest.prototype.send = function(body) {
-          var self = this;
-          if (this._reqUrl && this._reqUrl.indexOf('captcha/category') !== -1) {
-            setTimeout(function() {
-              var mock = JSON.stringify({
-                result: "Success",
-                data: [
-                  { id: 1, category_name: "Electronics", image: "/assets/images/logo.png" },
-                  { id: 2, category_name: "Sensors", image: "/assets/images/logo.png" },
-                  { id: 3, category_name: "Dev Boards", image: "/assets/images/logo.png" },
-                  { id: 4, category_name: "Hardware", image: "/assets/images/logo.png" }
-                ]
-              });
-              Object.defineProperty(self, 'readyState', { value: 4 });
-              Object.defineProperty(self, 'status', { value: 200 });
-              Object.defineProperty(self, 'responseText', { value: mock });
-              Object.defineProperty(self, 'response', { value: mock });
-              if (typeof self.onreadystatechange === 'function') self.onreadystatechange();
-              if (typeof self.onload === 'function') self.onload();
-            }, 50);
-            return;
-          }
-          return origSend.apply(this, arguments);
-        };
-      }
-
       if (!window.__cpImgFixInjected) {
         window.__cpImgFixInjected = true;
         window.addEventListener('error', function(e) {
           if (e.target && e.target.tagName === 'IMG') {
             var img = e.target;
+            // Never replace captcha or auth modal images with product fallback
+            if (img.closest && (img.closest('.auth-modal-card') || img.closest('.auth-modal-backdrop'))) {
+              return;
+            }
+            if ((img.alt && img.alt.indexOf('Captcha') !== -1) || (img.src && img.src.indexOf('captcha') !== -1)) {
+              return;
+            }
             if (!img.dataset.fallbackDone) {
               img.dataset.fallbackDone = 'true';
               img.src = '/assets/images/electronics/product/1.jpg';
