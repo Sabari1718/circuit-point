@@ -1545,6 +1545,26 @@ class _WebviewAppScreenState extends State<WebviewAppScreen> {
             try {
               sessionStorage.setItem('__cp_pending_action', JSON.stringify(e.detail));
             } catch(err) {}
+
+            var product = e.detail.product;
+            if (e.detail.action === 'wishlist' && product) {
+              try {
+                var cur = localStorage.getItem('wishlist_guest');
+                var list = cur ? JSON.parse(cur) : [];
+                var pid = String(product.product_id || product.id);
+                if (!list.some(function(item) { return String(item.product_id || item.id) === pid; })) {
+                  list.unshift(product);
+                  localStorage.setItem('wishlist_guest', JSON.stringify(list));
+                }
+              } catch(err) {}
+            } else if (e.detail.action === 'cart' && product) {
+              try {
+                sessionStorage.setItem('__cp_pending_cart', JSON.stringify({
+                  product: product,
+                  quantity: e.detail.quantity || 1
+                }));
+              } catch(err) {}
+            }
           }
         });
 
@@ -1575,11 +1595,13 @@ class _WebviewAppScreenState extends State<WebviewAppScreen> {
                 if (pid && pid.endsWith('/')) pid = pid.slice(0, -1);
               }
             }
-            pendingAction = {
-              action: 'wishlist',
-              productId: pid,
-              btnSelector: wishlistBtn.className
-            };
+            if (!pendingAction || pendingAction.action !== 'wishlist') {
+              pendingAction = {
+                action: 'wishlist',
+                productId: pid,
+                btnSelector: wishlistBtn.className
+              };
+            }
             try {
               sessionStorage.setItem('__cp_pending_action', JSON.stringify(pendingAction));
             } catch(err) {}
@@ -1602,12 +1624,14 @@ class _WebviewAppScreenState extends State<WebviewAppScreen> {
                 if (pid && pid.endsWith('/')) pid = pid.slice(0, -1);
               }
             }
-            pendingAction = {
-              action: 'cart',
-              productId: pid,
-              quantity: 1,
-              btnSelector: cartBtn.className
-            };
+            if (!pendingAction || pendingAction.action !== 'cart') {
+              pendingAction = {
+                action: 'cart',
+                productId: pid,
+                quantity: 1,
+                btnSelector: cartBtn.className
+              };
+            }
             try {
               sessionStorage.setItem('__cp_pending_action', JSON.stringify(pendingAction));
             } catch(err) {}
@@ -1638,159 +1662,174 @@ class _WebviewAppScreenState extends State<WebviewAppScreen> {
           var productId = (product && (product.id || product.product_id)) || actionData.productId;
 
           setTimeout(function() {
-            var executed = false;
-
-            // Strategy 1: Re-click the exact button the user touched
-            if (lastClickedBtn && document.body.contains(lastClickedBtn)) {
+            var userRaw = localStorage.getItem('user');
+            var userId = '';
+            var virtualId = '';
+            var userObj = {};
+            if (userRaw) {
               try {
-                lastClickedBtn.click();
-                executed = true;
+                userObj = JSON.parse(userRaw);
+                userId = userObj.user_main_id || userObj.userId || userObj.user_id || userObj.id || userObj.virtual_id || userObj.email || '';
+                virtualId = userObj.virtual_id || userObj.virtualId || userObj.vid || '';
               } catch(e) {}
             }
 
-            // Strategy 2: If on product detail page
-            if (!executed && (window.location.pathname.indexOf('/products/' + productId) !== -1 || window.location.pathname.indexOf('/products/') !== -1)) {
-              if (action === 'wishlist') {
-                var btn = document.querySelector('.btn-wishlist-circle, .btn-wishlist-heart');
-                if (btn) {
-                  btn.click();
-                  executed = true;
-                }
-              } else if (action === 'cart') {
-                var btn = document.querySelector('.btn-primary-add-cart, .btn-add-cart');
-                if (btn) {
-                  btn.click();
-                  executed = true;
-                }
-              }
-            }
+            var pid = String(productId || (product && (product.product_id || product.id)) || '');
 
-            // Strategy 3: Find product card in list/grid (Home or Category)
-            if (!executed && productId) {
-              var links = document.querySelectorAll('a[href*="/products/' + productId + '"]');
-              for (var i = 0; i < links.length; i++) {
-                var card = links[i].closest('.product-card-modern') || links[i].closest('.product-card-wrap');
-                if (card) {
-                  if (action === 'wishlist') {
-                    var btn = card.querySelector('.btn-wishlist-heart');
-                    if (btn) {
-                      btn.click();
-                      executed = true;
-                      break;
-                    }
-                  } else if (action === 'cart') {
-                    var btn = card.querySelector('.btn-add-cart');
-                    if (btn) {
-                      btn.click();
-                      executed = true;
-                      break;
-                    }
+            if (action === 'wishlist') {
+              var wishPayload = {
+                product_id: pid,
+                id: pid,
+                product_name: (product && (product.product_name || product.name)) || "Product",
+                name: (product && (product.product_name || product.name)) || "Product",
+                mrp: (product && (product.mrp || product.original_price || product.price)) || 0,
+                price: (product && (product.selling_price || product.price || product.mrp)) || 0,
+                image_url: (product && (product.image_url || product.base_image)) || "/assets/images/fashion/product/front/1.jpg",
+                brands: (product && (product.brands || product.brand)) || "Imported",
+                categories: (product && (product.categories || product.primary_category)) || "Electronics",
+                stock_quantity: 50,
+                status: "active",
+                created_at: new Date().toISOString()
+              };
+
+              // 1. Write to all possible wishlist localStorage keys
+              var keys = [
+                'wishlist_' + userId,
+                'wishlist_' + virtualId,
+                'wishlist_' + (userObj.id || ''),
+                'wishlist_' + (userObj.email || ''),
+                'wishlist_guest'
+              ];
+              keys.forEach(function(k) {
+                if (!k || k === 'wishlist_') return;
+                try {
+                  var cur = localStorage.getItem(k);
+                  var list = cur ? JSON.parse(cur) : [];
+                  if (!list.some(function(item) { return String(item.product_id || item.id) === pid; })) {
+                    list.unshift(wishPayload);
+                    localStorage.setItem(k, JSON.stringify(list));
+                  }
+                } catch(e) {}
+              });
+
+              // 2. Call backend Wishlist API with token
+              fetch('https://rtest.epriceoffer.com/api/wishlist', {
+                method: 'POST',
+                headers: {
+                  'Authorization': 'Bearer ' + token,
+                  'x-user-id': String(userId || virtualId),
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(wishPayload)
+              }).then(function() {
+                window.dispatchEvent(new Event('storage'));
+              }).catch(function() {});
+
+              // 3. Turn matching hearts RED on screen immediately
+              var hearts = document.querySelectorAll('.btn-wishlist-heart, .btn-wishlist-circle');
+              hearts.forEach(function(h) {
+                var card = h.closest('.product-card-modern, .product-detail-container, .product-details-wrap') || document;
+                if (card === document || (card.innerHTML && card.innerHTML.indexOf('/products/' + pid) !== -1) || window.location.pathname.indexOf('/products/' + pid) !== -1) {
+                  h.classList.add('wishlisted');
+                  var icon = h.querySelector('i');
+                  if (icon) {
+                    icon.className = 'fas fa-heart text-danger';
+                    icon.style.color = '#e11d48';
                   }
                 }
+              });
+
+              // 4. Try clicking the button as well to update React state
+              if (lastClickedBtn && document.body.contains(lastClickedBtn)) {
+                try { lastClickedBtn.click(); } catch(e) {}
               }
+
+              // 5. Show attractive toast
+              var toast = document.createElement('div');
+              toast.className = 'cp-auto-toast';
+              toast.innerHTML = '<i class="fas fa-heart" style="color:#e11d48;margin-right:8px;font-size:16px;"></i> Saved to your Wishlist!';
+              toast.style.cssText = 'position:fixed;bottom:85px;left:50%;transform:translateX(-50%);background:#0f172a;color:#ffffff;padding:12px 22px;border-radius:30px;font-size:13px;font-weight:700;z-index:999999;box-shadow:0 12px 30px rgba(0,0,0,0.35);display:flex;align-items:center;';
+              document.body.appendChild(toast);
+              setTimeout(function() {
+                toast.style.opacity = '0';
+                toast.style.transition = 'opacity 0.4s ease';
+                setTimeout(function() { toast.remove(); }, 400);
+              }, 2500);
+
+              window.dispatchEvent(new Event('storage'));
+            } else if (action === 'cart') {
+              var qty = (actionData && actionData.quantity) || 1;
+              var cartPayload = {
+                productId: pid,
+                id: pid,
+                product_name: (product && (product.product_name || product.name)) || "Product",
+                name: (product && (product.product_name || product.name)) || "Product",
+                mrp: (product && (product.mrp || product.price)) || 0,
+                price: (product && (product.price || product.mrp)) || 0,
+                image_url: (product && (product.image_url || product.base_image)) || "/assets/images/fashion/product/front/1.jpg",
+                brands: (product && (product.brands || product.brand)) || "Imported",
+                categories: (product && (product.categories || product.primary_category)) || "Electronics",
+                quantity: qty,
+                virtual_id: virtualId
+              };
+
+              // 1. Write to cart localStorage keys
+              var cartKeys = [
+                'cart_' + virtualId,
+                'cart_' + userId,
+                'cart_' + (userObj.id || ''),
+                'cart_guest'
+              ];
+              cartKeys.forEach(function(k) {
+                if (!k || k === 'cart_') return;
+                try {
+                  var cur = localStorage.getItem(k);
+                  var list = cur ? JSON.parse(cur) : [];
+                  var existing = list.find(function(item) { return String(item.id || item.productId) === pid; });
+                  if (existing) {
+                    existing.quantity = (existing.quantity || 1) + qty;
+                  } else {
+                    list.push(cartPayload);
+                  }
+                  localStorage.setItem(k, JSON.stringify(list));
+                } catch(e) {}
+              });
+
+              // 2. Call backend Cart API
+              fetch('https://rtest.epriceoffer.com/api/cart', {
+                method: 'POST',
+                headers: {
+                  'Authorization': 'Bearer ' + token,
+                  'x-user-id': String(userId || virtualId),
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(cartPayload)
+              }).then(function() {
+                window.dispatchEvent(new Event('storage'));
+              }).catch(function() {});
+
+              // 3. Try clicking the button
+              if (lastClickedBtn && document.body.contains(lastClickedBtn)) {
+                try { lastClickedBtn.click(); } catch(e) {}
+              }
+
+              // 4. Show attractive toast
+              var toast = document.createElement('div');
+              toast.className = 'cp-auto-toast';
+              toast.innerHTML = '<i class="fas fa-check-circle" style="color:#10b981;margin-right:8px;font-size:16px;"></i> Added to your Cart!';
+              toast.style.cssText = 'position:fixed;bottom:85px;left:50%;transform:translateX(-50%);background:#0f172a;color:#ffffff;padding:12px 22px;border-radius:30px;font-size:13px;font-weight:700;z-index:999999;box-shadow:0 12px 30px rgba(0,0,0,0.35);display:flex;align-items:center;';
+              document.body.appendChild(toast);
+              setTimeout(function() {
+                toast.style.opacity = '0';
+                toast.style.transition = 'opacity 0.4s ease';
+                setTimeout(function() { toast.remove(); }, 400);
+              }, 2500);
+
+              window.dispatchEvent(new Event('storage'));
             }
 
             lastClickedBtn = null;
-            if (executed) return;
-
-            // Strategy 4: Direct API & LocalStorage Fallback if button not present
-            if (product || productId) {
-              var userRaw = localStorage.getItem('user');
-              var userId = '';
-              var virtualId = '';
-              if (userRaw) {
-                try {
-                  var u = JSON.parse(userRaw);
-                  userId = u.user_main_id || u.userId || u.user_id || u.id || u.virtual_id || u.email || '';
-                  virtualId = u.virtual_id || u.virtualId || u.vid || '';
-                } catch(e) {}
-              }
-
-              if (action === 'wishlist') {
-                var wishPayload = {
-                  product_id: productId,
-                  product_name: (product && (product.product_name || product.name)) || "Product",
-                  name: (product && (product.product_name || product.name)) || "Product",
-                  mrp: (product && (product.mrp || product.original_price || product.price)) || 0,
-                  price: (product && (product.selling_price || product.price || product.mrp)) || 0,
-                  image_url: (product && (product.image_url || product.base_image)) || "/assets/images/fashion/product/front/1.jpg",
-                  brands: (product && (product.brands || product.brand)) || "Imported",
-                  categories: (product && (product.categories || product.primary_category)) || "Electronics",
-                  stock_quantity: 50,
-                  status: "active",
-                  created_at: new Date().toISOString()
-                };
-
-                var keys = ['wishlist_' + userId, 'wishlist_' + virtualId, 'wishlist_guest'];
-                keys.forEach(function(k) {
-                  if (!k || k === 'wishlist_') return;
-                  try {
-                    var cur = localStorage.getItem(k);
-                    var list = cur ? JSON.parse(cur) : [];
-                    if (!list.some(function(item) { return String(item.product_id || item.id) === String(productId); })) {
-                      list.unshift(wishPayload);
-                      localStorage.setItem(k, JSON.stringify(list));
-                    }
-                  } catch(e) {}
-                });
-
-                fetch('https://rtest.epriceoffer.com/api/wishlist', {
-                  method: 'POST',
-                  headers: {
-                    'Authorization': 'Bearer ' + token,
-                    'x-user-id': String(userId),
-                    'Content-Type': 'application/json'
-                  },
-                  body: JSON.stringify(wishPayload)
-                }).catch(function() {});
-
-                window.dispatchEvent(new Event('storage'));
-              } else if (action === 'cart') {
-                var qty = (actionData && actionData.quantity) || 1;
-                var cartPayload = {
-                  productId: productId,
-                  id: productId,
-                  product_name: (product && (product.product_name || product.name)) || "Product",
-                  name: (product && (product.product_name || product.name)) || "Product",
-                  mrp: (product && (product.mrp || product.price)) || 0,
-                  price: (product && (product.price || product.mrp)) || 0,
-                  image_url: (product && (product.image_url || product.base_image)) || "/assets/images/fashion/product/front/1.jpg",
-                  brands: (product && (product.brands || product.brand)) || "Imported",
-                  categories: (product && (product.categories || product.primary_category)) || "Electronics",
-                  quantity: qty,
-                  virtual_id: virtualId
-                };
-
-                var cartKeys = ['cart_' + userId, 'cart_' + virtualId, 'cart_guest'];
-                cartKeys.forEach(function(k) {
-                  if (!k || k === 'cart_') return;
-                  try {
-                    var cur = localStorage.getItem(k);
-                    var list = cur ? JSON.parse(cur) : [];
-                    var existing = list.find(function(item) { return String(item.id || item.productId) === String(productId); });
-                    if (existing) {
-                      existing.quantity = (existing.quantity || 1) + qty;
-                    } else {
-                      list.push(cartPayload);
-                    }
-                    localStorage.setItem(k, JSON.stringify(list));
-                  } catch(e) {}
-                });
-
-                fetch('https://rtest.epriceoffer.com/api/cart', {
-                  method: 'POST',
-                  headers: {
-                    'Authorization': 'Bearer ' + token,
-                    'x-user-id': String(userId),
-                    'Content-Type': 'application/json'
-                  },
-                  body: JSON.stringify(cartPayload)
-                }).catch(function() {});
-
-                window.dispatchEvent(new Event('storage'));
-              }
-            }
-          }, 450);
+          }, 350);
         }
 
         window.addEventListener('user-profile-updated', executePendingAction);
