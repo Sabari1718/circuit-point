@@ -1530,16 +1530,295 @@ class _WebviewAppScreenState extends State<WebviewAppScreen> {
         }, true);
       }
 
+      // 7. Auto-resume Wishlist & Add-to-Cart after Guest Login (Flipkart style)
+      function setupAuthResumeHandler() {
+        if (window.__cpAuthResumeInjected) return;
+        window.__cpAuthResumeInjected = true;
+
+        var pendingAction = null;
+        var lastClickedBtn = null;
+
+        // Capture auth-required events
+        window.addEventListener('auth-required', function(e) {
+          if (e && e.detail) {
+            pendingAction = e.detail;
+            try {
+              sessionStorage.setItem('__cp_pending_action', JSON.stringify(e.detail));
+            } catch(err) {}
+          }
+        });
+
+        // Capture user taps on wishlist/cart buttons when not logged in
+        document.addEventListener('click', function(e) {
+          var token = localStorage.getItem('token');
+          if (token) return; // Already logged in
+
+          var wishlistBtn = e.target.closest('.btn-wishlist-heart, .btn-wishlist-circle');
+          var cartBtn = e.target.closest('.btn-add-cart, .btn-primary-add-cart');
+
+          if (wishlistBtn) {
+            lastClickedBtn = wishlistBtn;
+            var card = wishlistBtn.closest('.product-card-modern, .product-detail-container, .product-details-wrap') || document;
+            var link = card.querySelector('a[href*="/products/"]');
+            var pid = null;
+            if (link && link.href) {
+              var parts = link.href.split('/products/');
+              if (parts.length > 1) {
+                pid = parts[1].split('?')[0].split('#')[0];
+                if (pid && pid.endsWith('/')) pid = pid.slice(0, -1);
+              }
+            }
+            if (!pid && window.location.pathname.indexOf('/products/') !== -1) {
+              var parts = window.location.pathname.split('/products/');
+              if (parts.length > 1) {
+                pid = parts[1].split('?')[0].split('#')[0];
+                if (pid && pid.endsWith('/')) pid = pid.slice(0, -1);
+              }
+            }
+            pendingAction = {
+              action: 'wishlist',
+              productId: pid,
+              btnSelector: wishlistBtn.className
+            };
+            try {
+              sessionStorage.setItem('__cp_pending_action', JSON.stringify(pendingAction));
+            } catch(err) {}
+          } else if (cartBtn) {
+            lastClickedBtn = cartBtn;
+            var card = cartBtn.closest('.product-card-modern, .product-detail-container, .product-details-wrap') || document;
+            var link = card.querySelector('a[href*="/products/"]');
+            var pid = null;
+            if (link && link.href) {
+              var parts = link.href.split('/products/');
+              if (parts.length > 1) {
+                pid = parts[1].split('?')[0].split('#')[0];
+                if (pid && pid.endsWith('/')) pid = pid.slice(0, -1);
+              }
+            }
+            if (!pid && window.location.pathname.indexOf('/products/') !== -1) {
+              var parts = window.location.pathname.split('/products/');
+              if (parts.length > 1) {
+                pid = parts[1].split('?')[0].split('#')[0];
+                if (pid && pid.endsWith('/')) pid = pid.slice(0, -1);
+              }
+            }
+            pendingAction = {
+              action: 'cart',
+              productId: pid,
+              quantity: 1,
+              btnSelector: cartBtn.className
+            };
+            try {
+              sessionStorage.setItem('__cp_pending_action', JSON.stringify(pendingAction));
+            } catch(err) {}
+          }
+        }, true);
+
+        function executePendingAction() {
+          var stored = null;
+          try {
+            var raw = sessionStorage.getItem('__cp_pending_action');
+            if (raw) stored = JSON.parse(raw);
+          } catch(err) {}
+
+          var actionData = pendingAction || stored;
+          if (!actionData) return;
+
+          var token = localStorage.getItem('token');
+          if (!token) return; // Not yet logged in
+
+          // Clear pending action so it runs only once
+          pendingAction = null;
+          try {
+            sessionStorage.removeItem('__cp_pending_action');
+          } catch(err) {}
+
+          var action = actionData.action;
+          var product = actionData.product;
+          var productId = (product && (product.id || product.product_id)) || actionData.productId;
+
+          setTimeout(function() {
+            var executed = false;
+
+            // Strategy 1: Re-click the exact button the user touched
+            if (lastClickedBtn && document.body.contains(lastClickedBtn)) {
+              try {
+                lastClickedBtn.click();
+                executed = true;
+              } catch(e) {}
+            }
+
+            // Strategy 2: If on product detail page
+            if (!executed && (window.location.pathname.indexOf('/products/' + productId) !== -1 || window.location.pathname.indexOf('/products/') !== -1)) {
+              if (action === 'wishlist') {
+                var btn = document.querySelector('.btn-wishlist-circle, .btn-wishlist-heart');
+                if (btn) {
+                  btn.click();
+                  executed = true;
+                }
+              } else if (action === 'cart') {
+                var btn = document.querySelector('.btn-primary-add-cart, .btn-add-cart');
+                if (btn) {
+                  btn.click();
+                  executed = true;
+                }
+              }
+            }
+
+            // Strategy 3: Find product card in list/grid (Home or Category)
+            if (!executed && productId) {
+              var links = document.querySelectorAll('a[href*="/products/' + productId + '"]');
+              for (var i = 0; i < links.length; i++) {
+                var card = links[i].closest('.product-card-modern') || links[i].closest('.product-card-wrap');
+                if (card) {
+                  if (action === 'wishlist') {
+                    var btn = card.querySelector('.btn-wishlist-heart');
+                    if (btn) {
+                      btn.click();
+                      executed = true;
+                      break;
+                    }
+                  } else if (action === 'cart') {
+                    var btn = card.querySelector('.btn-add-cart');
+                    if (btn) {
+                      btn.click();
+                      executed = true;
+                      break;
+                    }
+                  }
+                }
+              }
+            }
+
+            lastClickedBtn = null;
+            if (executed) return;
+
+            // Strategy 4: Direct API & LocalStorage Fallback if button not present
+            if (product || productId) {
+              var userRaw = localStorage.getItem('user');
+              var userId = '';
+              var virtualId = '';
+              if (userRaw) {
+                try {
+                  var u = JSON.parse(userRaw);
+                  userId = u.user_main_id || u.userId || u.user_id || u.id || u.virtual_id || u.email || '';
+                  virtualId = u.virtual_id || u.virtualId || u.vid || '';
+                } catch(e) {}
+              }
+
+              if (action === 'wishlist') {
+                var wishPayload = {
+                  product_id: productId,
+                  product_name: (product && (product.product_name || product.name)) || "Product",
+                  name: (product && (product.product_name || product.name)) || "Product",
+                  mrp: (product && (product.mrp || product.original_price || product.price)) || 0,
+                  price: (product && (product.selling_price || product.price || product.mrp)) || 0,
+                  image_url: (product && (product.image_url || product.base_image)) || "/assets/images/fashion/product/front/1.jpg",
+                  brands: (product && (product.brands || product.brand)) || "Imported",
+                  categories: (product && (product.categories || product.primary_category)) || "Electronics",
+                  stock_quantity: 50,
+                  status: "active",
+                  created_at: new Date().toISOString()
+                };
+
+                var keys = ['wishlist_' + userId, 'wishlist_' + virtualId, 'wishlist_guest'];
+                keys.forEach(function(k) {
+                  if (!k || k === 'wishlist_') return;
+                  try {
+                    var cur = localStorage.getItem(k);
+                    var list = cur ? JSON.parse(cur) : [];
+                    if (!list.some(function(item) { return String(item.product_id || item.id) === String(productId); })) {
+                      list.unshift(wishPayload);
+                      localStorage.setItem(k, JSON.stringify(list));
+                    }
+                  } catch(e) {}
+                });
+
+                fetch('https://rtest.epriceoffer.com/api/wishlist', {
+                  method: 'POST',
+                  headers: {
+                    'Authorization': 'Bearer ' + token,
+                    'x-user-id': String(userId),
+                    'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify(wishPayload)
+                }).catch(function() {});
+
+                window.dispatchEvent(new Event('storage'));
+              } else if (action === 'cart') {
+                var qty = (actionData && actionData.quantity) || 1;
+                var cartPayload = {
+                  productId: productId,
+                  id: productId,
+                  product_name: (product && (product.product_name || product.name)) || "Product",
+                  name: (product && (product.product_name || product.name)) || "Product",
+                  mrp: (product && (product.mrp || product.price)) || 0,
+                  price: (product && (product.price || product.mrp)) || 0,
+                  image_url: (product && (product.image_url || product.base_image)) || "/assets/images/fashion/product/front/1.jpg",
+                  brands: (product && (product.brands || product.brand)) || "Imported",
+                  categories: (product && (product.categories || product.primary_category)) || "Electronics",
+                  quantity: qty,
+                  virtual_id: virtualId
+                };
+
+                var cartKeys = ['cart_' + userId, 'cart_' + virtualId, 'cart_guest'];
+                cartKeys.forEach(function(k) {
+                  if (!k || k === 'cart_') return;
+                  try {
+                    var cur = localStorage.getItem(k);
+                    var list = cur ? JSON.parse(cur) : [];
+                    var existing = list.find(function(item) { return String(item.id || item.productId) === String(productId); });
+                    if (existing) {
+                      existing.quantity = (existing.quantity || 1) + qty;
+                    } else {
+                      list.push(cartPayload);
+                    }
+                    localStorage.setItem(k, JSON.stringify(list));
+                  } catch(e) {}
+                });
+
+                fetch('https://rtest.epriceoffer.com/api/cart', {
+                  method: 'POST',
+                  headers: {
+                    'Authorization': 'Bearer ' + token,
+                    'x-user-id': String(userId),
+                    'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify(cartPayload)
+                }).catch(function() {});
+
+                window.dispatchEvent(new Event('storage'));
+              }
+            }
+          }, 450);
+        }
+
+        window.addEventListener('user-profile-updated', executePendingAction);
+
+        var lastKnownToken = localStorage.getItem('token');
+        setInterval(function() {
+          var curToken = localStorage.getItem('token');
+          if (curToken && !lastKnownToken) {
+            lastKnownToken = curToken;
+            executePendingAction();
+          } else {
+            lastKnownToken = curToken;
+          }
+        }, 500);
+      }
+
       setupUserModal();
       setupMobileFilter();
       setupProfilePage();
       setupAppHeader();
+      setupAuthResumeHandler();
       if (!window.__circuitPointInterval) {
         window.__circuitPointInterval = setInterval(function() {
           setupUserModal();
           setupMobileFilter();
           setupProfilePage();
           setupAppHeader();
+          setupAuthResumeHandler();
         }, 500);
       }
     })();
