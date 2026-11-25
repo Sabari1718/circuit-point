@@ -37,7 +37,7 @@ class HomeRemoteDataSourceImpl implements HomeRemoteDataSource {
 
   @override
   Future<List<SectorModel>> getSectors() async {
-    final response = await dio.get('https://rtest.epriceoffer.com/api/sectors');
+    final response = await dio.get('https://circuitpoint.circuitpointcare.com/api/sectors');
     if (response.statusCode == 200) {
       final list = _extractList(response.data);
       return list.map((e) => SectorModel.fromJson(e)).toList();
@@ -48,7 +48,7 @@ class HomeRemoteDataSourceImpl implements HomeRemoteDataSource {
 
   @override
   Future<List<SubSectorModel>> getSubSectors() async {
-    final response = await dio.get('https://rtest.epriceoffer.com/api/sub-sectors');
+    final response = await dio.get('https://circuitpoint.circuitpointcare.com/api/sub-sectors');
     if (response.statusCode == 200) {
       final list = _extractList(response.data);
       return list.map((e) => SubSectorModel.fromJson(e)).toList();
@@ -59,7 +59,7 @@ class HomeRemoteDataSourceImpl implements HomeRemoteDataSource {
 
   @override
   Future<List<ProductModel>> getFeaturedProducts() async {
-    final response = await dio.get('https://rtest.epriceoffer.com/api/products/featured');
+    final response = await dio.get('https://circuitpoint.circuitpointcare.com/api/products/featured');
     if (response.statusCode == 200) {
       final list = _extractList(response.data);
       return list.map((e) => ProductModel.fromJson(e)).toList();
@@ -70,7 +70,7 @@ class HomeRemoteDataSourceImpl implements HomeRemoteDataSource {
 
   @override
   Future<List<ProductModel>> getProducts({int limit = 24, int page = 1, String? brand, String? search, String? sortBy = 'id', String? sortOrder = 'desc'}) async {
-    String url = 'https://rtest.epriceoffer.com/api/products?page=$page&limit=$limit&sort_by=$sortBy&sort_order=$sortOrder';
+    String url = 'https://circuitpoint.circuitpointcare.com/api/products?page=$page&limit=$limit&sort_by=$sortBy&sort_order=$sortOrder';
     if (brand != null && brand.isNotEmpty) {
       url += '&brands=$brand';
     }
@@ -85,7 +85,7 @@ class HomeRemoteDataSourceImpl implements HomeRemoteDataSource {
 
   @override
   Future<List<ProductModel>> getProductsBySubCategory(int subCategoryId) async {
-    final response = await dio.get('https://rtest.epriceoffer.com/api/products?sub_category_id=$subCategoryId');
+    final response = await dio.get('https://circuitpoint.circuitpointcare.com/api/products?sub_category_id=$subCategoryId');
     if (response.statusCode == 200) {
       final list = _extractList(response.data);
       return list.map((e) => ProductModel.fromJson(e)).toList();
@@ -96,7 +96,7 @@ class HomeRemoteDataSourceImpl implements HomeRemoteDataSource {
 
   @override
   Future<List<ProductModel>> getProductsByCategory(int categoryId) async {
-    final response = await dio.get('https://rtest.epriceoffer.com/api/products?category_id=$categoryId');
+    final response = await dio.get('https://circuitpoint.circuitpointcare.com/api/products?category_id=$categoryId');
     if (response.statusCode == 200) {
       final list = _extractList(response.data);
       return list.map((e) => ProductModel.fromJson(e)).toList();
@@ -107,7 +107,7 @@ class HomeRemoteDataSourceImpl implements HomeRemoteDataSource {
 
   @override
   Future<List<String>> getBrands() async {
-    final response = await dio.get('https://rtest.epriceoffer.com/api/brands');
+    final response = await dio.get('https://circuitpoint.circuitpointcare.com/api/brands');
     if (response.statusCode == 200) {
       final list = _extractList(response.data);
       return list.map((e) => e.toString()).toList();
@@ -118,7 +118,7 @@ class HomeRemoteDataSourceImpl implements HomeRemoteDataSource {
 
   @override
   Future<Map<String, dynamic>> getCart() async {
-    final response = await dio.get('https://rtest.epriceoffer.com/api/cart');
+    final response = await dio.get('https://circuitpoint.circuitpointcare.com/api/cart');
     if (response.statusCode == 200) {
       return response.data;
     } else {
@@ -128,7 +128,7 @@ class HomeRemoteDataSourceImpl implements HomeRemoteDataSource {
 
   @override
   Future<Map<String, dynamic>> getWishlist() async {
-    final response = await dio.get('https://rtest.epriceoffer.com/api/wishlist');
+    final response = await dio.get('https://circuitpoint.circuitpointcare.com/api/wishlist');
     if (response.statusCode == 200) {
       return response.data;
     } else {
