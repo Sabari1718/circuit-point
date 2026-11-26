@@ -40,7 +40,7 @@ class _WebviewAppScreenState extends State<WebviewAppScreen> {
   int _currentIndex = 0;
   DateTime? _lastBackPressTime;
 
-  final String _baseUrl = 'https://circuitpoint.circuitpointcare.com';
+  final String _baseUrl = 'https://shop.circuitpointcare.com';
 
   final List<_NavItemData> _navItems = const [
     _NavItemData(
@@ -1198,7 +1198,7 @@ class _WebviewAppScreenState extends State<WebviewAppScreen> {
               });
 
               // 2. Call backend Wishlist API with token
-              fetch('https://circuitpoint.circuitpointcare.com/api/wishlist', {
+              fetch('https://shop.circuitpointcare.com/api/wishlist', {
                 method: 'POST',
                 headers: {
                   'Authorization': 'Bearer ' + token,
@@ -1281,7 +1281,7 @@ class _WebviewAppScreenState extends State<WebviewAppScreen> {
               });
 
               // 2. Call backend Cart API
-              fetch('https://circuitpoint.circuitpointcare.com/api/cart', {
+              fetch('https://shop.circuitpointcare.com/api/cart', {
                 method: 'POST',
                 headers: {
                   'Authorization': 'Bearer ' + token,
@@ -1373,7 +1373,8 @@ class _WebviewAppScreenState extends State<WebviewAppScreen> {
 
   void _handleDeepLink(Uri uri) {
     debugPrint('Received Deep Link: $uri');
-    if (uri.host == 'circuitpoint.circuitpointcare.com' ||
+    if (uri.host == 'shop.circuitpointcare.com' ||
+        uri.host == 'circuitpoint.circuitpointcare.com' ||
         uri.host == 'rtest.epriceoffer.com') {
       setState(() {
         _hasError = false;
