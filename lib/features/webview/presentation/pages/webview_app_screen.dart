@@ -415,16 +415,10 @@ class _WebviewAppScreenState extends State<WebviewAppScreen> {
               display: none !important;
             }
 
-            /* Hide redundant header action icons on mobile while keeping profile menu in DOM */
-            .header-actions {
-              display: contents !important;
-            }
-            .header-orders-btn,
-            .header-wishlist-btn,
-            .header-cart-btn {
-              display: none !important;
-            }
-            .user-profile-btn {
+            /* Hide redundant header actions and notification bell icon on mobile */
+            .header-actions,
+            .notification-center-container,
+            .header-notification-btn {
               display: none !important;
             }
 
@@ -896,10 +890,14 @@ class _WebviewAppScreenState extends State<WebviewAppScreen> {
           voxoLogos[i].style.setProperty('display', 'none', 'important');
         }
 
-        // Hide desktop nav links (Home, Products, Categories) from top header
+        // Hide desktop nav links (Home, Products, Categories) and notification bell from top header
         var mainNav = document.querySelector('.main-nav');
         if (mainNav) {
           mainNav.style.setProperty('display', 'none', 'important');
+        }
+        var notifs = document.querySelectorAll('.notification-center-container, .header-notification-btn, .header-actions');
+        for (var i = 0; i < notifs.length; i++) {
+          notifs[i].style.setProperty('display', 'none', 'important');
         }
 
         // Add electronics chip emblem to brand section if not present
