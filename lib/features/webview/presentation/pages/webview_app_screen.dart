@@ -118,7 +118,9 @@ class _WebviewAppScreenState extends State<WebviewAppScreen> {
       onWebResourceError: (WebResourceError error) {
         // Only trigger full connection failure if the main HTML frame itself fails
         if (error.isForMainFrame == true) {
-          debugPrint('WebView Main Frame Error: ${error.description} (code: ${error.errorCode})');
+          debugPrint(
+            'WebView Main Frame Error: ${error.description} (code: ${error.errorCode})',
+          );
           setState(() {
             _hasError = true;
           });
@@ -131,12 +133,20 @@ class _WebviewAppScreenState extends State<WebviewAppScreen> {
         // Handle UPI, WhatsApp, Tel, Mailto, and custom payment schemes (like Flipkart)
         if (uri.scheme != 'http' && uri.scheme != 'https') {
           try {
-            final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+            final launched = await launchUrl(
+              uri,
+              mode: LaunchMode.externalApplication,
+            );
             if (!launched) {
-              await launchUrl(uri, mode: LaunchMode.externalNonBrowserApplication);
+              await launchUrl(
+                uri,
+                mode: LaunchMode.externalNonBrowserApplication,
+              );
             }
           } catch (e) {
-            debugPrint('Could not launch external URL: ${request.url}, error: $e');
+            debugPrint(
+              'Could not launch external URL: ${request.url}, error: $e',
+            );
           }
           return NavigationDecision.prevent;
         }
@@ -146,7 +156,8 @@ class _WebviewAppScreenState extends State<WebviewAppScreen> {
     );
 
     if (navigationDelegate.platform is AndroidNavigationDelegate) {
-      final androidNav = navigationDelegate.platform as AndroidNavigationDelegate;
+      final androidNav =
+          navigationDelegate.platform as AndroidNavigationDelegate;
       androidNav.setOnSSlAuthError((error) {
         if (error is AndroidSslAuthError) {
           error.proceed();
@@ -160,16 +171,23 @@ class _WebviewAppScreenState extends State<WebviewAppScreen> {
       ..setNavigationDelegate(navigationDelegate);
 
     if (_controller.platform is AndroidWebViewController) {
-      final androidController = _controller.platform as AndroidWebViewController;
+      final androidController =
+          _controller.platform as AndroidWebViewController;
       androidController.setMixedContentMode(MixedContentMode.alwaysAllow);
-      androidController.setOnShowFileSelector((FileSelectorParams params) async {
+      androidController.setOnShowFileSelector((
+        FileSelectorParams params,
+      ) async {
         try {
           FileType fileType = FileType.any;
           List<String>? allowedExtensions;
 
           final accepts = params.acceptTypes;
-          final bool acceptsImages = accepts.any((t) => t.toLowerCase().contains('image'));
-          final bool acceptsPdf = accepts.any((t) => t.toLowerCase().contains('pdf'));
+          final bool acceptsImages = accepts.any(
+            (t) => t.toLowerCase().contains('image'),
+          );
+          final bool acceptsPdf = accepts.any(
+            (t) => t.toLowerCase().contains('pdf'),
+          );
 
           if (acceptsImages && !acceptsPdf) {
             fileType = FileType.image;
@@ -1345,16 +1363,20 @@ class _WebviewAppScreenState extends State<WebviewAppScreen> {
       debugPrint('Failed to get initial app link: $e');
     }
 
-    _linkSubscription = _appLinks.uriLinkStream.listen((uri) {
-      _handleDeepLink(uri);
-    }, onError: (err) {
-      debugPrint('Deep link stream error: $err');
-    });
+    _linkSubscription = _appLinks.uriLinkStream.listen(
+      (uri) {
+        _handleDeepLink(uri);
+      },
+      onError: (err) {
+        debugPrint('Deep link stream error: $err');
+      },
+    );
   }
 
   void _handleDeepLink(Uri uri) {
     debugPrint('Received Deep Link: $uri');
-    if (uri.host == 'circuitpoint.circuitpointcare.com' || uri.host == 'rtest.epriceoffer.com') {
+    if (uri.host == 'circuitpoint.circuitpointcare.com' ||
+        uri.host == 'rtest.epriceoffer.com') {
       setState(() {
         _hasError = false;
       });
@@ -1408,7 +1430,9 @@ class _WebviewAppScreenState extends State<WebviewAppScreen> {
       return;
     }
 
-    if (path.contains('profile') || path.contains('login') || path.contains('account')) {
+    if (path.contains('profile') ||
+        path.contains('login') ||
+        path.contains('account')) {
       if (_currentIndex != 5) {
         setState(() => _currentIndex = 5);
       }
@@ -1496,16 +1520,296 @@ class _WebviewAppScreenState extends State<WebviewAppScreen> {
       return;
     }
 
-    // My Account Trigger -> Toggles Website's Exact My Account Dropdown Card
+    // My Account Trigger -> Shows / Toggles Website's Exact My Account Popover Card
     if (item.url == '/profile') {
-      _controller.runJavaScript('''
-        var profileBtn = document.querySelector(".user-profile-btn");
-        if (profileBtn) {
-          profileBtn.click();
-        } else {
-          var a = document.querySelector("a[href='/profile'], a[href*='profile']");
-          if (a) a.click();
-        }
+      _controller.runJavaScript(r'''
+        (function() {
+          var existingMenu = document.getElementById('mobile-my-account-popup');
+          var existingBackdrop = document.getElementById('mobile-my-account-backdrop');
+
+          if (existingMenu) {
+            existingMenu.classList.remove('active');
+            if (existingBackdrop) existingBackdrop.classList.remove('active');
+            setTimeout(function() {
+              if (existingMenu && existingMenu.parentNode) existingMenu.parentNode.removeChild(existingMenu);
+              if (existingBackdrop && existingBackdrop.parentNode) existingBackdrop.parentNode.removeChild(existingBackdrop);
+            }, 180);
+            return;
+          }
+
+          // Ensure FontAwesome CDN is present for vector icons
+          if (!document.getElementById('circuit-point-fa-cdn')) {
+            var fa = document.createElement('link');
+            fa.id = 'circuit-point-fa-cdn';
+            fa.rel = 'stylesheet';
+            fa.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css';
+            document.head.appendChild(fa);
+          }
+
+          // Ensure styles are injected
+          if (!document.getElementById('mobile-account-popup-styles')) {
+            var st = document.createElement('style');
+            st.id = 'mobile-account-popup-styles';
+            st.textContent = `
+              .mobile-my-account-backdrop {
+                position: fixed !important;
+                inset: 0 !important;
+                background: rgba(0, 0, 0, 0.28) !important;
+                z-index: 999998 !important;
+                opacity: 0;
+                transition: opacity 0.15s ease-out !important;
+              }
+              .mobile-my-account-backdrop.active {
+                opacity: 1 !important;
+              }
+              .mobile-exact-account-card {
+                position: fixed !important;
+                bottom: 80px !important;
+                right: 12px !important;
+                width: 245px !important;
+                max-width: calc(100vw - 24px) !important;
+                background: #ffffff !important;
+                border: 1px solid #e2e8f0 !important;
+                border-radius: 14px !important;
+                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15), 0 3px 8px rgba(0, 0, 0, 0.06) !important;
+                z-index: 999999 !important;
+                padding: 8px 6px !important;
+                box-sizing: border-box !important;
+                opacity: 0;
+                transform: translateY(8px) scale(0.96);
+                transition: opacity 0.16s ease-out, transform 0.16s cubic-bezier(0.16, 1, 0.3, 1) !important;
+                transform-origin: bottom right !important;
+              }
+              .mobile-exact-account-card.active {
+                opacity: 1 !important;
+                transform: translateY(0) scale(1) !important;
+              }
+              .mobile-exact-account-card .user-dropdown-header {
+                background: transparent !important;
+                border-bottom: 1px solid #f1f5f9 !important;
+                border-radius: 0 !important;
+                padding: 6px 10px 8px 10px !important;
+                margin-bottom: 4px !important;
+              }
+              .mobile-exact-account-card .user-dropdown-name {
+                font-size: 14.5px !important;
+                font-weight: 700 !important;
+                color: #0f172a !important;
+                letter-spacing: -0.2px !important;
+                margin: 0 !important;
+              }
+              .mobile-exact-account-card .user-dropdown-email {
+                font-size: 12px !important;
+                font-weight: 500 !important;
+                color: #64748b !important;
+                margin-top: 2px !important;
+                word-break: break-all !important;
+                white-space: normal !important;
+              }
+              .mobile-exact-account-card .user-dropdown-item {
+                font-size: 13.5px !important;
+                font-weight: 600 !important;
+                padding: 8.5px 12px !important;
+                border-radius: 8px !important;
+                display: flex !important;
+                align-items: center !important;
+                gap: 10px !important;
+                color: #1e293b !important;
+                text-decoration: none !important;
+                cursor: pointer !important;
+                margin: 1px 0 !important;
+                width: 100% !important;
+                box-sizing: border-box !important;
+                transition: background 0.12s ease !important;
+                user-select: none !important;
+              }
+              .mobile-exact-account-card .user-dropdown-item:active {
+                background: #f1f5f9 !important;
+              }
+              .mobile-exact-account-card .user-dropdown-item i {
+                font-size: 14px !important;
+                width: 18px !important;
+                text-align: center !important;
+              }
+              .mobile-exact-account-card .user-dropdown-item.logout {
+                color: #dc2626 !important;
+              }
+              .mobile-exact-account-card .user-dropdown-item.logout i {
+                color: #dc2626 !important;
+              }
+            `;
+            document.head.appendChild(st);
+          }
+
+          var user = null;
+          try {
+            var rawUser = localStorage.getItem("user");
+            if (rawUser) user = JSON.parse(rawUser);
+          } catch(e) {}
+          var token = localStorage.getItem("token");
+          var isLoggedIn = Boolean(token || (user && (user.id || user.email || user.name)));
+
+          var title = "My Account";
+          var subtitle = "My Account";
+          if (user) {
+            title = user.name || user.full_name || (user.email ? user.email.split('@')[0] : "My Account");
+            subtitle = user.email || (isLoggedIn ? "customer@srivagroups.in" : "My Account");
+          }
+
+          var cartBadge = document.querySelector('.header-cart-badge');
+          var cartCount = cartBadge ? cartBadge.textContent.trim() : '0';
+          var wishBadge = document.querySelector('.header-wishlist-badge');
+          var wishCount = wishBadge ? wishBadge.textContent.trim() : '0';
+          var ordersBadge = document.querySelector('.header-orders-badge');
+          var ordersCount = ordersBadge ? ordersBadge.textContent.trim() : '';
+
+          var backdrop = document.createElement('div');
+          backdrop.id = 'mobile-my-account-backdrop';
+          backdrop.className = 'mobile-my-account-backdrop';
+          document.body.appendChild(backdrop);
+
+          var card = document.createElement('div');
+          card.id = 'mobile-my-account-popup';
+          card.className = 'mobile-exact-account-card';
+
+          card.innerHTML = `
+            <div class="user-dropdown-header">
+              <div class="user-dropdown-name">${title}</div>
+              <div class="user-dropdown-email">${subtitle}</div>
+            </div>
+            <div class="user-dropdown-item" id="cp-item-home">
+              <i class="fas fa-home" style="width: 16px; color: #475569;"></i>
+              <span>Home</span>
+            </div>
+            <div class="user-dropdown-item" id="cp-item-profile">
+              <i class="fas fa-user-circle" style="width: 16px; color: #475569;"></i>
+              <span>My Profile</span>
+            </div>
+            <div class="user-dropdown-item" id="cp-item-address">
+              <i class="fas fa-map-marker-alt" style="width: 16px; color: #e11d48;"></i>
+              <span>Add Address</span>
+            </div>
+            <div class="user-dropdown-item" id="cp-item-wishlist">
+              <i class="fas fa-heart" style="width: 16px; color: #e11d48;"></i>
+              <span>My Wishlist (${wishCount})</span>
+            </div>
+            <div class="user-dropdown-item" id="cp-item-cart">
+              <i class="fas fa-shopping-cart" style="width: 16px; color: #475569;"></i>
+              <span>My Cart (${cartCount})</span>
+            </div>
+            <div class="user-dropdown-item" id="cp-item-orders">
+              <i class="fas fa-truck-fast" style="width: 16px; color: #e11d48;"></i>
+              <span>My Orders &amp; Tracking ${ordersCount ? '(' + ordersCount + ')' : ''}</span>
+            </div>
+            <div style="height: 1px; background: #f1f5f9; margin: 4px 0;"></div>
+            ${isLoggedIn ? `
+              <div class="user-dropdown-item logout" id="cp-item-logout">
+                <i class="fas fa-sign-out-alt" style="width: 16px; color: #dc2626;"></i>
+                <span>Logout</span>
+              </div>
+            ` : `
+              <div class="user-dropdown-item" id="cp-item-signin">
+                <i class="fas fa-sign-in-alt" style="width: 16px; color: #e11d48;"></i>
+                <span>Sign In</span>
+              </div>
+              <div class="user-dropdown-item" id="cp-item-register">
+                <i class="fas fa-user-plus" style="width: 16px; color: #e11d48;"></i>
+                <span>New User? Register</span>
+              </div>
+            `}
+          `;
+
+          document.body.appendChild(card);
+
+          function closeMenu() {
+            card.classList.remove('active');
+            backdrop.classList.remove('active');
+            setTimeout(function() {
+              if (card && card.parentNode) card.parentNode.removeChild(card);
+              if (backdrop && backdrop.parentNode) backdrop.parentNode.removeChild(backdrop);
+            }, 180);
+          }
+
+          backdrop.onclick = closeMenu;
+
+          requestAnimationFrame(function() {
+            backdrop.classList.add('active');
+            card.classList.add('active');
+          });
+
+          document.getElementById('cp-item-home').onclick = function() {
+            closeMenu();
+            var a = document.querySelector("a[href='/home'], a[href='/']");
+            if (a) a.click(); else window.location.href = '/home';
+          };
+
+          document.getElementById('cp-item-profile').onclick = function() {
+            closeMenu();
+            if (isLoggedIn) {
+              var a = document.querySelector("a[href='/profile'], a[href*='profile']");
+              if (a) a.click(); else window.location.href = '/profile';
+            } else {
+              window.dispatchEvent(new CustomEvent("auth-required", {
+                detail: { force: true, action: "profile", viewMode: "login", returnUrl: "/profile", source: "navbar" }
+              }));
+            }
+          };
+
+          document.getElementById('cp-item-address').onclick = function() {
+            closeMenu();
+            window.dispatchEvent(new CustomEvent("open-address-modal"));
+          };
+
+          document.getElementById('cp-item-wishlist').onclick = function() {
+            closeMenu();
+            var a = document.querySelector("a[href='/wishlist'], .header-wishlist-btn");
+            if (a) a.click(); else window.location.href = '/wishlist';
+          };
+
+          document.getElementById('cp-item-cart').onclick = function() {
+            closeMenu();
+            var btn = document.querySelector(".header-cart-btn");
+            if (btn) btn.click(); else window.location.href = '/cart';
+          };
+
+          document.getElementById('cp-item-orders').onclick = function() {
+            closeMenu();
+            var btn = document.querySelector(".header-orders-btn");
+            if (btn) btn.click(); else window.dispatchEvent(new Event("open-orders-modal"));
+          };
+
+          var signinBtn = document.getElementById('cp-item-signin');
+          if (signinBtn) {
+            signinBtn.onclick = function() {
+              closeMenu();
+              window.dispatchEvent(new CustomEvent("auth-required", {
+                detail: { force: true, action: "login", viewMode: "login", returnUrl: location.pathname, source: "navbar" }
+              }));
+            };
+          }
+
+          var regBtn = document.getElementById('cp-item-register');
+          if (regBtn) {
+            regBtn.onclick = function() {
+              closeMenu();
+              window.dispatchEvent(new CustomEvent("auth-required", {
+                detail: { force: true, action: "register", viewMode: "register", returnUrl: location.pathname, source: "navbar" }
+              }));
+            };
+          }
+
+          var logoutBtn = document.getElementById('cp-item-logout');
+          if (logoutBtn) {
+            logoutBtn.onclick = function() {
+              closeMenu();
+              localStorage.removeItem("token");
+              localStorage.removeItem("user");
+              window.dispatchEvent(new Event("user-profile-updated"));
+              window.dispatchEvent(new Event("orders-updated"));
+              window.location.href = '/home';
+            };
+          }
+        })();
       ''');
       return;
     }
@@ -1530,12 +1834,17 @@ class _WebviewAppScreenState extends State<WebviewAppScreen> {
     // 0. If User Profile dropdown menu is open, close it on back press
     try {
       final isDropdownOpen = await _controller.runJavaScriptReturningResult(
-        'Boolean(document.querySelector(".user-dropdown-card"))',
+        'Boolean(document.getElementById("mobile-my-account-popup") || document.querySelector(".user-dropdown-card"))',
       );
       if (isDropdownOpen == true || isDropdownOpen.toString() == 'true') {
         await _controller.runJavaScript('''
-          var profileBtn = document.querySelector(".user-profile-btn");
-          if (profileBtn) profileBtn.click();
+          var b = document.getElementById("mobile-my-account-backdrop");
+          if (b) {
+            b.click();
+          } else {
+            var profileBtn = document.querySelector(".user-profile-btn");
+            if (profileBtn) profileBtn.click();
+          }
         ''');
         return;
       }
@@ -1603,7 +1912,8 @@ class _WebviewAppScreenState extends State<WebviewAppScreen> {
 
     // 5. Double back press to exit
     final now = DateTime.now();
-    if (_lastBackPressTime == null || now.difference(_lastBackPressTime!) > const Duration(seconds: 2)) {
+    if (_lastBackPressTime == null ||
+        now.difference(_lastBackPressTime!) > const Duration(seconds: 2)) {
       _lastBackPressTime = now;
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1651,10 +1961,7 @@ class _WebviewAppScreenState extends State<WebviewAppScreen> {
             Text(
               'Please check your internet connection and try again.',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey.shade600,
-              ),
+              style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
             ),
             const SizedBox(height: 24),
             ElevatedButton.icon(
@@ -1662,11 +1969,17 @@ class _WebviewAppScreenState extends State<WebviewAppScreen> {
               icon: const Icon(Icons.refresh_rounded, color: Colors.white),
               label: const Text(
                 'Retry',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFE53935),
-                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 32,
+                  vertical: 12,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(24),
                 ),
@@ -1726,7 +2039,9 @@ class _WebviewAppScreenState extends State<WebviewAppScreen> {
                     ),
                     child: Icon(
                       isSelected ? item.activeIcon : item.icon,
-                      color: isSelected ? const Color(0xFFE53935) : Colors.grey.shade600,
+                      color: isSelected
+                          ? const Color(0xFFE53935)
+                          : Colors.grey.shade600,
                       size: 20,
                     ),
                   ),
@@ -1737,8 +2052,12 @@ class _WebviewAppScreenState extends State<WebviewAppScreen> {
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       fontSize: 9.5,
-                      fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
-                      color: isSelected ? const Color(0xFFE53935) : Colors.grey.shade700,
+                      fontWeight: isSelected
+                          ? FontWeight.w800
+                          : FontWeight.w500,
+                      color: isSelected
+                          ? const Color(0xFFE53935)
+                          : Colors.grey.shade700,
                       letterSpacing: -0.2,
                     ),
                   ),
@@ -1783,7 +2102,9 @@ class _WebviewAppScreenState extends State<WebviewAppScreen> {
                   child: LinearProgressIndicator(
                     value: _loadingProgress,
                     backgroundColor: Colors.transparent,
-                    valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFE53935)),
+                    valueColor: const AlwaysStoppedAnimation<Color>(
+                      Color(0xFFE53935),
+                    ),
                     minHeight: 3,
                   ),
                 ),
