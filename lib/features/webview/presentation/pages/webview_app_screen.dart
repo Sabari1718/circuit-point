@@ -350,105 +350,6 @@ class _WebviewAppScreenState extends State<WebviewAppScreen> {
           }
 
           @media (max-width: 991px) {
-            /* Products layout: Products show first */
-            .products-layout-wrapper {
-              display: flex !important;
-              flex-direction: column !important;
-              overflow: visible !important;
-            }
-            .products-catalog-main-content {
-              width: 100% !important;
-              order: 1 !important;
-              max-width: 100% !important;
-            }
-
-            /* Filter sidebar turned into a Mobile Side Drawer */
-            .products-filter-sidebar-col {
-              position: fixed !important;
-              top: 0 !important;
-              left: 0 !important;
-              bottom: 0 !important;
-              width: 85% !important;
-              max-width: 320px !important;
-              height: 100vh !important;
-              height: 100dvh !important;
-              background: #ffffff !important;
-              z-index: 99999 !important;
-              box-shadow: 4px 0 25px rgba(0, 0, 0, 0.25) !important;
-              transform: translateX(-105%) !important;
-              transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1) !important;
-              overflow-y: auto !important;
-              -webkit-overflow-scrolling: touch !important;
-              padding: 20px 16px !important;
-              box-sizing: border-box !important;
-              display: block !important;
-            }
-            .products-filter-sidebar-col.mobile-drawer-open {
-              transform: translateX(0) !important;
-            }
-            .filter-sidebar-card {
-              border: none !important;
-              box-shadow: none !important;
-              padding: 0 !important;
-              margin: 0 !important;
-            }
-
-            /* Clean dark backdrop when drawer is open (no blur) */
-            .mobile-filter-backdrop {
-              display: none;
-              position: fixed !important;
-              top: 0 !important;
-              left: 0 !important;
-              right: 0 !important;
-              bottom: 0 !important;
-              background: rgba(0, 0, 0, 0.6) !important;
-              z-index: 99998 !important;
-            }
-            .mobile-filter-backdrop.active {
-              display: block !important;
-            }
-
-            /* Sleek Filter Trigger Button on Toolbar */
-            .mobile-filter-toggle-btn {
-              display: inline-flex !important;
-              align-items: center !important;
-              gap: 6px !important;
-              background: #ffffff !important;
-              border: 1.5px solid #E53935 !important;
-              color: #E53935 !important;
-              font-weight: 700 !important;
-              font-size: 13px !important;
-              padding: 6px 14px !important;
-              border-radius: 20px !important;
-              cursor: pointer !important;
-              box-shadow: 0 2px 6px rgba(229, 57, 53, 0.12) !important;
-              margin-right: auto !important;
-            }
-            .mobile-filter-toggle-btn:active {
-              background: #E53935 !important;
-              color: #ffffff !important;
-            }
-
-            /* Sticky Close Button inside Drawer Header */
-            .mobile-filter-close-btn {
-              position: sticky !important;
-              top: 0 !important;
-              float: right !important;
-              margin-bottom: 8px !important;
-              width: 34px !important;
-              height: 34px !important;
-              border-radius: 50% !important;
-              background: #f1f5f9 !important;
-              border: none !important;
-              display: flex !important;
-              align-items: center !important;
-              justify-content: center !important;
-              font-size: 16px !important;
-              color: #475569 !important;
-              cursor: pointer !important;
-              z-index: 1000 !important;
-            }
-
             /* Profile Page VIP Redesign */
             .profile-page-wrapper {
               background: #f8fafc !important;
@@ -1310,85 +1211,8 @@ class _WebviewAppScreenState extends State<WebviewAppScreen> {
         }
       }
 
-      // 4. Mobile Filter Drawer DOM Setup
-      function setupMobileFilter() {
-        if (window.innerWidth > 991) return;
-
-        var sidebar = document.querySelector('.products-filter-sidebar-col');
-        if (!sidebar) return;
-
-        var toolbar = document.querySelector('.catalog-toolbar');
-
-        var backdrop = document.querySelector('.mobile-filter-backdrop');
-        if (!backdrop) {
-          backdrop = document.createElement('div');
-          backdrop.className = 'mobile-filter-backdrop';
-          document.body.appendChild(backdrop);
-          backdrop.addEventListener('click', function() {
-            closeDrawer();
-          });
-        }
-
-        function openDrawer() {
-          sidebar.classList.add('mobile-drawer-open');
-          backdrop.classList.add('active');
-          document.body.style.overflow = 'hidden';
-        }
-
-        function closeDrawer() {
-          sidebar.classList.remove('mobile-drawer-open');
-          backdrop.classList.remove('active');
-          document.body.style.overflow = '';
-        }
-
-        if (!sidebar.querySelector('.mobile-filter-close-btn')) {
-          var closeBtn = document.createElement('button');
-          closeBtn.className = 'mobile-filter-close-btn';
-          closeBtn.type = 'button';
-          closeBtn.innerHTML = '✕';
-          closeBtn.setAttribute('aria-label', 'Close Filters');
-          closeBtn.addEventListener('click', function(e) {
-            e.stopPropagation();
-            closeDrawer();
-          });
-          sidebar.insertBefore(closeBtn, sidebar.firstChild);
-        }
-
-        // Auto close drawer when user clicks "Show Products" or clear all inside drawer
-        var buttons = sidebar.querySelectorAll('button');
-        buttons.forEach(function(b) {
-          if (b.innerText && (b.innerText.includes('Products') || b.innerText.includes('Show'))) {
-            if (!b.__hasCloseListener) {
-              b.__hasCloseListener = true;
-              b.addEventListener('click', function() {
-                setTimeout(closeDrawer, 300);
-              });
-            }
-          }
-        });
-
-        if (toolbar && !toolbar.querySelector('.mobile-filter-toggle-btn')) {
-          var filterBtn = document.createElement('button');
-          filterBtn.className = 'mobile-filter-toggle-btn';
-          filterBtn.type = 'button';
-
-          var countTag = sidebar.querySelector('.filter-sidebar-count-tag');
-          var countText = countTag ? countTag.innerText.trim() : '';
-
-          filterBtn.innerHTML = '⚡ Filters' + (countText ? ' <span style="background:#E53935;color:#fff;border-radius:10px;padding:2px 7px;font-size:11px;margin-left:4px;">' + countText + '</span>' : '');
-
-          filterBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            openDrawer();
-          });
-
-          toolbar.style.display = 'flex';
-          toolbar.style.justifyContent = 'space-between';
-          toolbar.style.alignItems = 'center';
-          toolbar.insertBefore(filterBtn, toolbar.firstChild);
-        }
-      }
+      // 4. Mobile Filter (handled natively by the website's React components)
+      function setupMobileFilter() {}
 
       // 5. Setup Profile Page layout and clean tab navigation
       function setupProfilePage() {
@@ -2602,13 +2426,14 @@ class _WebviewAppScreenState extends State<WebviewAppScreen> {
     // 3. If mobile filter drawer is open, back button closes the filter drawer
     try {
       final isDrawerOpen = await _controller.runJavaScriptReturningResult(
-        'Boolean(document.querySelector(".products-filter-sidebar-col.mobile-drawer-open"))',
+        'Boolean(document.querySelector(".products-filter-sidebar-col.mobile-open"))',
       );
       if (isDrawerOpen == true || isDrawerOpen.toString() == 'true') {
         await _controller.runJavaScript('''
-          document.querySelector(".products-filter-sidebar-col")?.classList.remove("mobile-drawer-open");
-          document.querySelector(".mobile-filter-backdrop")?.classList.remove("active");
-          document.body.style.overflow = "";
+          var filterBtn = document.querySelector(".products-mobile-filter-btn, .filter-sidebar-mobile-close-btn");
+          if (filterBtn) {
+            filterBtn.click();
+          }
         ''');
         return;
       }
