@@ -83,7 +83,7 @@ class _WebviewAppScreenState extends State<WebviewAppScreen> {
       icon: Icons.person_outline_rounded,
       activeIcon: Icons.person_rounded,
       url: '/profile',
-      selector: "a[href='/profile'], a[href*='profile']",
+      selector: ".user-profile-btn",
     ),
   ];
 
@@ -229,14 +229,14 @@ class _WebviewAppScreenState extends State<WebviewAppScreen> {
         document.head.appendChild(style);
       }
       style.textContent = `
-          /* Crisp Solid Translucent Backdrop (No blur filter to prevent blurry fonts) */
+          /* Subtle Translucent Backdrop for Popover */
           .user-card-backdrop {
             display: none;
             position: fixed !important;
             inset: 0 !important;
-            background: rgba(15, 23, 42, 0.65) !important;
+            background: rgba(0, 0, 0, 0.28) !important;
             z-index: 99998 !important;
-            animation: backdropFadeIn 0.2s ease-out !important;
+            animation: backdropFadeIn 0.15s ease-out !important;
           }
           .user-card-backdrop.active {
             display: block !important;
@@ -246,103 +246,91 @@ class _WebviewAppScreenState extends State<WebviewAppScreen> {
             to { opacity: 1; }
           }
 
-          /* Razor-Sharp Center Account Modal */
+          /* Exact Web My Account Dropdown Card */
           .user-dropdown-card {
             position: fixed !important;
-            top: 0 !important;
-            bottom: 0 !important;
-            left: 0 !important;
-            right: 0 !important;
-            margin: auto !important;
-            height: fit-content !important;
-            max-height: 82vh !important;
-            width: calc(100% - 36px) !important;
-            max-width: 350px !important;
-            overflow-y: auto !important;
+            bottom: 82px !important;
+            right: 12px !important;
+            width: 245px !important;
+            max-width: calc(100vw - 24px) !important;
             background: #ffffff !important;
-            border-radius: 26px !important;
-            box-shadow: 0 25px 65px rgba(0, 0, 0, 0.4) !important;
-            z-index: 99999 !important;
-            padding: 16px 14px !important;
             border: 1px solid #e2e8f0 !important;
+            border-radius: 14px !important;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15), 0 3px 8px rgba(0, 0, 0, 0.06) !important;
+            z-index: 99999 !important;
+            padding: 8px 6px !important;
             box-sizing: border-box !important;
-            -webkit-font-smoothing: antialiased !important;
-            text-rendering: optimizeLegibility !important;
+            animation: dropdownPopUp 0.18s cubic-bezier(0.16, 1, 0.3, 1) !important;
+            transform-origin: bottom right !important;
           }
 
+          @keyframes dropdownPopUp {
+            from {
+              opacity: 0;
+              transform: translateY(8px) scale(0.96);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0) scale(1);
+            }
+          }
+
+          /* Exact Web Header: White background, dark title, gray subtitle */
           .user-dropdown-header {
-            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%) !important;
-            border-radius: 18px !important;
-            padding: 14px 16px !important;
-            margin-bottom: 10px !important;
-            position: relative !important;
+            background: transparent !important;
+            border-bottom: 1px solid #f1f5f9 !important;
+            border-radius: 0 !important;
+            padding: 6px 10px 8px 10px !important;
+            margin-bottom: 4px !important;
           }
 
           .user-dropdown-name {
-            font-size: 16px !important;
-            font-weight: 800 !important;
-            color: #ffffff !important;
+            font-size: 14.5px !important;
+            font-weight: 700 !important;
+            color: #0f172a !important;
             letter-spacing: -0.2px !important;
+            margin: 0 !important;
           }
 
           .user-dropdown-email {
-            font-size: 12.5px !important;
-            color: #f87171 !important;
-            font-weight: 600 !important;
+            font-size: 12px !important;
+            font-weight: 500 !important;
+            color: #64748b !important;
+            margin-top: 2px !important;
             word-break: break-all !important;
             white-space: normal !important;
-            margin-top: 2px !important;
           }
 
-          .user-dropdown-close-btn {
-            position: absolute !important;
-            top: 12px !important;
-            right: 12px !important;
-            width: 28px !important;
-            height: 28px !important;
-            border-radius: 50% !important;
-            background: rgba(255, 255, 255, 0.15) !important;
-            border: 1px solid rgba(255, 255, 255, 0.2) !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            font-size: 12px !important;
-            font-weight: bold !important;
-            color: #ffffff !important;
-            cursor: pointer !important;
-          }
-
+          /* Exact Web Dropdown Menu Items */
           .user-dropdown-item {
-            font-size: 14px !important;
+            font-size: 13.5px !important;
             font-weight: 600 !important;
-            padding: 10px 14px !important;
-            border-radius: 12px !important;
+            padding: 8.5px 12px !important;
+            border-radius: 8px !important;
             display: flex !important;
             align-items: center !important;
-            gap: 12px !important;
-            color: #334155 !important;
+            gap: 10px !important;
+            color: #1e293b !important;
             text-decoration: none !important;
             cursor: pointer !important;
-            margin: 2px 0 !important;
-            transition: all 0.15s ease !important;
+            margin: 1px 0 !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+            transition: background 0.12s ease !important;
           }
 
           .user-dropdown-item:active {
             background: #f1f5f9 !important;
-            transform: scale(0.98) !important;
           }
 
           .user-dropdown-item i {
-            font-size: 16px !important;
-            width: 22px !important;
+            font-size: 14px !important;
+            width: 18px !important;
             text-align: center !important;
-            color: #E53935 !important;
           }
 
           .user-dropdown-item.logout {
             color: #dc2626 !important;
-            background: #fef2f2 !important;
-            margin-top: 6px !important;
           }
           .user-dropdown-item.logout i {
             color: #dc2626 !important;
@@ -409,8 +397,16 @@ class _WebviewAppScreenState extends State<WebviewAppScreen> {
               display: none !important;
             }
 
-            /* Hide redundant header action icons on mobile */
+            /* Hide redundant header action icons on mobile while keeping profile menu in DOM */
             .header-actions {
+              display: contents !important;
+            }
+            .header-orders-btn,
+            .header-wishlist-btn,
+            .header-cart-btn {
+              display: none !important;
+            }
+            .user-profile-btn {
               display: none !important;
             }
 
@@ -847,7 +843,7 @@ class _WebviewAppScreenState extends State<WebviewAppScreen> {
         }, true);
       }
 
-      // 3. Setup Crisp Backdrop & Close Button for User Profile Center Modal
+      // 3. Setup Popover Backdrop for User Profile Menu
       function setupUserModal() {
         var dropdown = document.querySelector('.user-dropdown-card');
         var userBackdrop = document.querySelector('.user-card-backdrop');
@@ -864,26 +860,8 @@ class _WebviewAppScreenState extends State<WebviewAppScreen> {
             });
           }
           userBackdrop.classList.add('active');
-          document.body.style.overflow = 'hidden';
-
-          // Add close button to header if not present
-          var header = dropdown.querySelector('.user-dropdown-header');
-          if (header && !header.querySelector('.user-dropdown-close-btn')) {
-            var closeBtn = document.createElement('button');
-            closeBtn.className = 'user-dropdown-close-btn';
-            closeBtn.type = 'button';
-            closeBtn.innerHTML = '✕';
-            closeBtn.setAttribute('aria-label', 'Close');
-            closeBtn.addEventListener('click', function(e) {
-              e.stopPropagation();
-              var btn = document.querySelector('.user-profile-btn');
-              if (btn) btn.click();
-            });
-            header.appendChild(closeBtn);
-          }
         } else if (userBackdrop) {
           userBackdrop.classList.remove('active');
-          document.body.style.overflow = '';
         }
       }
 
@@ -1518,19 +1496,15 @@ class _WebviewAppScreenState extends State<WebviewAppScreen> {
       return;
     }
 
-    // My Account Trigger -> Loads Website's Profile / Account Page
+    // My Account Trigger -> Toggles Website's Exact My Account Dropdown Card
     if (item.url == '/profile') {
       _controller.runJavaScript('''
-        var btn = document.querySelector("a[href='/profile'], a[href*='profile']");
-        if (btn) {
-          btn.click();
+        var profileBtn = document.querySelector(".user-profile-btn");
+        if (profileBtn) {
+          profileBtn.click();
         } else {
-          var a = document.createElement('a');
-          a.href = '/profile';
-          document.body.appendChild(a);
-          var event = new MouseEvent('click', { bubbles: true, cancelable: true, view: window });
-          a.dispatchEvent(event);
-          a.remove();
+          var a = document.querySelector("a[href='/profile'], a[href*='profile']");
+          if (a) a.click();
         }
       ''');
       return;
