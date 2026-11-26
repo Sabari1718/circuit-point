@@ -59,11 +59,11 @@ class _WebviewAppScreenState extends State<WebviewAppScreen> {
       selector: "a[href='/categories']",
     ),
     _NavItemData(
-      label: 'Orders',
-      icon: Icons.local_shipping_outlined,
-      activeIcon: Icons.local_shipping_rounded,
-      url: '/orders',
-      selector: ".header-orders-btn",
+      label: 'Products',
+      icon: Icons.inventory_2_outlined,
+      activeIcon: Icons.inventory_2_rounded,
+      url: '/products',
+      selector: "a[href='/products']",
     ),
     _NavItemData(
       label: 'Wishlist',
@@ -1901,15 +1901,49 @@ class _WebviewAppScreenState extends State<WebviewAppScreen> {
   }
 
   void _updateBottomNavIndex(String url) {
-    for (int i = 0; i < _navItems.length; i++) {
-      if (url.contains(_navItems[i].url)) {
-        if (_currentIndex != i) {
-          setState(() {
-            _currentIndex = i;
-          });
-        }
-        break;
+    final uri = Uri.tryParse(url);
+    final path = uri?.path.toLowerCase() ?? '';
+
+    if (path == '' || path == '/' || path == '/home') {
+      if (_currentIndex != 0) {
+        setState(() => _currentIndex = 0);
       }
+      return;
+    }
+
+    if (path.contains('categories')) {
+      if (_currentIndex != 1) {
+        setState(() => _currentIndex = 1);
+      }
+      return;
+    }
+
+    if (path.contains('product')) {
+      if (_currentIndex != 2) {
+        setState(() => _currentIndex = 2);
+      }
+      return;
+    }
+
+    if (path.contains('wishlist')) {
+      if (_currentIndex != 3) {
+        setState(() => _currentIndex = 3);
+      }
+      return;
+    }
+
+    if (path.contains('cart')) {
+      if (_currentIndex != 4) {
+        setState(() => _currentIndex = 4);
+      }
+      return;
+    }
+
+    if (path.contains('profile') || path.contains('login') || path.contains('account')) {
+      if (_currentIndex != 5) {
+        setState(() => _currentIndex = 5);
+      }
+      return;
     }
   }
 
@@ -2193,7 +2227,14 @@ class _WebviewAppScreenState extends State<WebviewAppScreen> {
                     color: const Color(0xFFE53935),
                     onTap: () {
                       Navigator.pop(ctx);
-                      _onBottomNavTapped(2); // Orders
+                      _controller.runJavaScript('''
+                        var btn = document.querySelector(".header-orders-btn");
+                        if (btn) {
+                          btn.click();
+                        } else {
+                          window.dispatchEvent(new Event("open-orders-modal"));
+                        }
+                      ''');
                     },
                   ),
                   const SizedBox(width: 10),
@@ -2415,6 +2456,24 @@ class _WebviewAppScreenState extends State<WebviewAppScreen> {
     });
 
     final item = _navItems[index];
+
+    // Products Trigger
+    if (item.url == '/products') {
+      _controller.runJavaScript('''
+        var btn = document.querySelector("a[href='/products'], a[href*='products']");
+        if (btn) {
+          btn.click();
+        } else {
+          var a = document.createElement('a');
+          a.href = '/products';
+          document.body.appendChild(a);
+          var event = new MouseEvent('click', { bubbles: true, cancelable: true, view: window });
+          a.dispatchEvent(event);
+          a.remove();
+        }
+      ''');
+      return;
+    }
 
     // Orders Drawer Trigger (opens My Orders & Tracking drawer like web)
     if (item.url == '/orders') {
