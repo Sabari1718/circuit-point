@@ -43,7 +43,7 @@ class WishlistScreen extends StatelessWidget {
                   contentPadding: const EdgeInsets.all(12),
                   leading: ClipRRect(
                     borderRadius: BorderRadius.circular(8),
-                    child: Image.network(product.imageUrl, width: 60, height: 60, fit: BoxFit.cover, errorBuilder: (_,__,___) => const Icon(Icons.image)),
+                    child: Image.network(product.imageUrl, width: 60, height: 60, fit: BoxFit.cover, errorBuilder: (context, error, stackTrace) => const Icon(Icons.image)),
                   ),
                   title: Text(product.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.bold)),
                   subtitle: Text('₹${product.offerPrice}', style: const TextStyle(color: Color(0xFFD32F2F), fontWeight: FontWeight.bold, fontSize: 16)),

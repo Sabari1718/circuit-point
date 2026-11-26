@@ -140,7 +140,7 @@ class _AccountPage extends StatelessWidget {
                   children: [
                     CircleAvatar(
                       radius: 30,
-                      backgroundColor: const Color(0xFFD32F2F).withOpacity(0.1),
+                      backgroundColor: const Color(0xFFD32F2F).withValues(alpha: 0.1),
                       child: const Icon(Icons.person, size: 30, color: Color(0xFFD32F2F)),
                     ),
                     const SizedBox(width: 16),

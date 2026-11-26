@@ -1,12 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:dio/dio.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import '../bloc/home_bloc.dart';
-import '../bloc/home_event.dart';
 import '../bloc/home_state.dart';
-import '../../data/repositories/home_repository.dart';
-import '../../data/datasources/home_remote_data_source.dart';
 import '../widgets/category_item.dart';
 import '../widgets/product_card.dart';
 import 'products_screen.dart';
@@ -280,7 +276,7 @@ class HomeScreen extends StatelessWidget {
                                   borderRadius: BorderRadius.circular(12),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.black.withOpacity(0.05),
+                                      color: Colors.black.withValues(alpha: 0.05),
                                       blurRadius: 10,
                                       offset: const Offset(0, 4),
                                     ),
@@ -573,7 +569,7 @@ class HomeScreen extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.1),
+              color: Colors.white.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Row(
@@ -623,7 +619,7 @@ class HomeScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
+        color: Colors.white.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Icon(icon, color: const Color(0xFFE57373), size: 16),
